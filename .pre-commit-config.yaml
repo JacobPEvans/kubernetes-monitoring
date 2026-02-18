@@ -77,7 +77,7 @@ repos:
     hooks:
       - id: kubeconform
         name: Validate Kubernetes schemas
-        entry: bash -c 'kubectl kustomize k8s/base/ | kubeconform -strict -summary -output text'
+        entry: bash -c 'set -o pipefail; kubectl kustomize k8s/base/ | kubeconform -strict -summary -output text'
         language: system
         pass_filenames: false
         files: ^k8s/base/.*\.yaml$

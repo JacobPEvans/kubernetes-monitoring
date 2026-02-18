@@ -39,7 +39,8 @@
     "streamtags",
     "kubeconform",
     "yamllint",
-    "bmuschko"
+    "bmuschko",
+    "pipefail"
   ],
   "ignorePaths": [
     "packs/",
