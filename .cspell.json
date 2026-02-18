@@ -36,7 +36,9 @@
     "sourcetype",
     "devnull",
     "backpressure",
-    "streamtags"
+    "streamtags",
+    "statefulset",
+    "statefulsets"
   ],
   "ignorePaths": [
     "packs/",

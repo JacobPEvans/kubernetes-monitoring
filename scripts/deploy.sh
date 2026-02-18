@@ -77,9 +77,14 @@ else
 fi
 echo ""
 
-# Step 3: Clean up old cribl-stream resources (replaced by standalone + managed)
-# Must run before apply to free NodePort 30900 for cribl-stream-standalone-ui
-echo "--- Step 3: Cleaning up old cribl-stream deployment ---"
+# Step 3: Clean up old resources (StatefulSets replaced by Deployments; old cribl-stream)
+# Must run before apply to free NodePorts and avoid resource conflicts
+echo "--- Step 3: Cleaning up old resources ---"
+for sts in cribl-edge-managed cribl-edge-standalone cribl-stream-managed cribl-stream-standalone otel-collector; do
+  if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete statefulset "$sts" 2>/dev/null; then
+    echo "  Deleted: statefulset/$sts"
+  fi
+done
 if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment cribl-stream 2>/dev/null; then
   echo "  Deleted: deployment/cribl-stream"
 fi
