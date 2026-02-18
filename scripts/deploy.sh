@@ -51,9 +51,11 @@ fi
 
 # Splunk HEC config (standalone edge)
 if [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
+  HEC_ARGS=(--from-literal=token="$SPLUNK_HEC_TOKEN")
+  [ -n "${SPLUNK_HEC_URL:-}" ] && HEC_ARGS+=(--from-literal=url="$SPLUNK_HEC_URL")
   kubectl --context "$CONTEXT" create secret generic splunk-hec-config \
     --namespace "$NAMESPACE" \
-    --from-literal=token="$SPLUNK_HEC_TOKEN" \
+    "${HEC_ARGS[@]}" \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
   echo "  Created: splunk-hec-config"
 else

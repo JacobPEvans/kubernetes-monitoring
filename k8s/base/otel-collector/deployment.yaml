@@ -18,7 +18,7 @@ spec:
       priorityClassName: monitoring-critical
       containers:
         - name: otel-collector
-          image: otel/opentelemetry-collector-contrib:0.120.0
+          image: otel/opentelemetry-collector-contrib:latest
           args:
             - --config=/etc/otel-collector-config.yaml
           ports:

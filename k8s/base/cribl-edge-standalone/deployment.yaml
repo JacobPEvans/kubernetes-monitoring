@@ -39,6 +39,12 @@ spec:
                   name: splunk-hec-config
                   key: token
                   optional: true
+            - name: SPLUNK_HEC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: splunk-hec-config
+                  key: url
+                  optional: true
           lifecycle:
             postStart:
               exec:

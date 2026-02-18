@@ -112,7 +112,7 @@ data:
       -d "{
         \"id\": \"splunk-hec\",
         \"type\": \"splunk_hec\",
-        \"url\": \"https://10.0.1.200:8088/services/collector\",
+        \"url\": \"$SPLUNK_HEC_URL\",
         \"token\": \"$SPLUNK_HEC_TOKEN\",
         \"index\": \"claude\",
         \"source\": \"cribl-edge\",
@@ -129,7 +129,7 @@ data:
       -d "{
         \"id\": \"splunk-hec\",
         \"type\": \"splunk_hec\",
-        \"url\": \"https://10.0.1.200:8088/services/collector\",
+        \"url\": \"$SPLUNK_HEC_URL\",
         \"token\": \"$SPLUNK_HEC_TOKEN\",
         \"index\": \"claude\",
         \"source\": \"cribl-edge\",
