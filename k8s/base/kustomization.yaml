@@ -17,6 +17,7 @@ resources:
   # AI job templates
   - ai-jobs/
 
-commonLabels:
-  app.kubernetes.io/managed-by: kustomize
-  app.kubernetes.io/part-of: claude-monitoring
+labels:
+  - pairs:
+      app.kubernetes.io/managed-by: kustomize
+      app.kubernetes.io/part-of: claude-monitoring
