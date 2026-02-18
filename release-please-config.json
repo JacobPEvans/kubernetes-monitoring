@@ -11,6 +11,8 @@
     {"type": "chore", "section": "Miscellaneous", "hidden": true},
     {"type": "refactor", "section": "Refactoring", "hidden": true},
     {"type": "test", "section": "Tests", "hidden": true},
-    {"type": "ci", "section": "CI", "hidden": true}
+    {"type": "ci", "section": "CI", "hidden": true},
+    {"type": "build", "section": "Build System", "hidden": true},
+    {"type": "style", "section": "Style", "hidden": true}
   ]
 }
