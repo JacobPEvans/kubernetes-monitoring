@@ -49,11 +49,12 @@ data:
             action: upsert
 
     exporters:
-      # Forward OTLP telemetry to Cribl Edge (managed by Cribl Cloud).
-      # Requires OTLP source configured in Cribl Cloud fleet UI.
-      # Future: redirect to cribl-stream-managed once Stream is cloud-managed.
-      otlphttp:
-        endpoint: http://cribl-edge-managed:9420
+      # Forward OTLP telemetry to Cribl Edge managed fleet via gRPC.
+      # Cribl OTLP source: open_telemetry type, protocol: grpc, port 4317, 0.0.0.0
+      otlp:
+        endpoint: cribl-edge-managed:4317
+        tls:
+          insecure: true
 
       # Debug logging
       debug:
@@ -67,12 +68,12 @@ data:
         traces:
           receivers: [otlp]
           processors: [batch, resource]
-          exporters: [otlphttp, debug]
+          exporters: [otlp, debug]
         metrics:
           receivers: [otlp]
           processors: [batch, resource]
-          exporters: [otlphttp, debug]
+          exporters: [otlp, debug]
         logs:
           receivers: [otlp, filelog]
           processors: [batch, resource]
-          exporters: [otlphttp, debug]
+          exporters: [otlp, debug]

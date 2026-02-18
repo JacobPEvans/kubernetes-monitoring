@@ -50,12 +50,20 @@ else
 fi
 
 # Splunk HEC config (standalone edge)
+# Derive HEC URL from SPLUNK_NETWORK terraform output (JSON array, e.g. '["192.168.0.200"]')
+SPLUNK_HEC_URL=""
+if [ -n "${SPLUNK_NETWORK:-}" ]; then
+  SPLUNK_IP=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])[0])" "$SPLUNK_NETWORK" 2>/dev/null || true)
+  [ -n "$SPLUNK_IP" ] && SPLUNK_HEC_URL="https://${SPLUNK_IP}:8088/services/collector"
+fi
 if [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
+  HEC_ARGS=(--from-literal=token="$SPLUNK_HEC_TOKEN")
+  [ -n "$SPLUNK_HEC_URL" ] && HEC_ARGS+=(--from-literal=url="$SPLUNK_HEC_URL")
   kubectl --context "$CONTEXT" create secret generic splunk-hec-config \
     --namespace "$NAMESPACE" \
-    --from-literal=token="$SPLUNK_HEC_TOKEN" \
+    "${HEC_ARGS[@]}" \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
-  echo "  Created: splunk-hec-config"
+  echo "  Created: splunk-hec-config (url derived from SPLUNK_NETWORK: ${SPLUNK_HEC_URL:-not set})"
 else
   echo "  SKIPPED: splunk-hec-config (SPLUNK_HEC_TOKEN not set)"
 fi

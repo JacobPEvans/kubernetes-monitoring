@@ -35,6 +35,7 @@ spec:
                 secretKeyRef:
                   name: cribl-cloud-config
                   key: stream-master-url
+                  optional: true
           volumeMounts:
             - name: cribl-data
               mountPath: /opt/cribl/data
