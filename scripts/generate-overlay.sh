@@ -113,6 +113,10 @@ spec:
         - name: cribl-config
           configMap:
             name: cribl-edge-standalone-config
+        - name: pack-source
+          hostPath:
+            path: ${HOME_DIR}/git/kubernetes-monitoring/main/packs
+            type: DirectoryOrCreate
 EOF
 
 echo "Overlay generated successfully."

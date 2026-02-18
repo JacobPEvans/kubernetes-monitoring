@@ -35,7 +35,8 @@
     "mgmt",
     "sourcetype",
     "devnull",
-    "backpressure"
+    "backpressure",
+    "streamtags"
   ],
   "ignorePaths": [
     "packs/",

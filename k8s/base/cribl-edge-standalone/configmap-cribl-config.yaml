@@ -4,42 +4,140 @@ metadata:
   name: cribl-edge-standalone-config
   namespace: monitoring
 data:
-  inputs.yml: |
+  pack-inputs-override.yml: |
     inputs:
       claude-code-logs:
-        type: file
         disabled: false
-        sendToRoutes: false
+        sendToRoutes: true
+        pqEnabled: false
+        streamtags: []
         mode: manual
-        path: /home/claude/.claude/projects/
         interval: 10
-        recurse: true
         filenames:
           - "*.jsonl"
+        filterArchivedFiles: false
+        tailOnly: false
+        idleTimeout: 300
+        checkFileModTime: false
+        forceText: false
+        hashLen: 256
         staleChannelFlushMs: 10000
-        preprocess:
-          disabled: true
-        fields:
+        suppressMissingPathErrors: false
+        deleteFiles: false
+        saltHash: false
+        includeUnidentifiableBinary: false
+        recurse: true
+        type: file
+        path: /home/claude/.claude/projects/
+        metadata:
           - name: datatype
             value: "'claude-code'"
-        connections:
-          - output: splunk-hec
-  outputs.yml: |
-    outputs:
-      splunk-hec:
-        type: splunk_hec
-        url: https://10.0.1.200:8088/services/collector
-        token: "${SPLUNK_HEC_TOKEN}"
-        index: claude
-        source: cribl-edge
-        sourcetype: "claude:code:session"
-        rejectUnauthorized: false
-        concurrency: 5
-        maxPayloadSizeKB: 4096
-        compress: true
-        onBackpressure: block
-      devnull:
-        type: devnull
-      default:
-        defaultId: splunk-hec
-        type: default
+  setup-edge.sh: |
+    #!/bin/sh
+    # Configure Cribl Edge: install pack + create Splunk HEC output.
+    # Cribl does NOT expand env vars in YAML config files, so outputs
+    # must be created via API to inject the real SPLUNK_HEC_TOKEN.
+    # Runs as postStart lifecycle hook on every pod start.
+    RETRIES=0
+    MAX_RETRIES=90
+    AUTH=""
+
+    # Phase 1: Wait for auth API
+    while [ $RETRIES -lt $MAX_RETRIES ]; do
+      AUTH=$(curl -sf -X POST http://127.0.0.1:9420/api/v1/auth/login \
+        -H 'Content-Type: application/json' \
+        -d '{"username":"admin","password":"admin"}' 2>/dev/null | \
+        sed 's/.*"token":"\([^"]*\)".*/\1/')
+      if [ -n "$AUTH" ]; then
+        break
+      fi
+      RETRIES=$((RETRIES + 1))
+      sleep 2
+    done
+
+    if [ -z "$AUTH" ]; then
+      echo "ERROR: Cribl auth API not ready after ${MAX_RETRIES} retries"
+      exit 0
+    fi
+    echo "Auth ready after $RETRIES retries"
+
+    # Phase 2: Wait for worker to be ready (inputs endpoint available)
+    RETRIES=0
+    while [ $RETRIES -lt 30 ]; do
+      WORKER_CHECK=$(curl -sf "http://127.0.0.1:9420/api/v1/system/inputs" \
+        -H "Authorization: Bearer $AUTH" 2>/dev/null || true)
+      if echo "$WORKER_CHECK" | grep -q '"count"'; then
+        break
+      fi
+      RETRIES=$((RETRIES + 1))
+      sleep 2
+    done
+    echo "Worker ready after $RETRIES additional retries"
+
+    # Phase 3: Install pack if not already installed
+    PACK_CHECK=$(curl -sf "http://127.0.0.1:9420/api/v1/packs/cc-edge-claude-code" \
+      -H "Authorization: Bearer $AUTH" 2>/dev/null || true)
+
+    if echo "$PACK_CHECK" | grep -q "cc-edge-claude-code"; then
+      echo "Pack already installed"
+    else
+      mkdir -p /opt/cribl/state/packs
+      cp /packs/cc-edge-claude-code.crbl /opt/cribl/state/packs/
+      RESULT=$(curl -sf -X POST http://127.0.0.1:9420/api/v1/packs \
+        -H "Authorization: Bearer $AUTH" \
+        -H 'Content-Type: application/json' \
+        -d '{"source":"cc-edge-claude-code.crbl"}' 2>&1)
+      echo "Pack install result: $RESULT"
+    fi
+
+    # Phase 4: Configure Splunk HEC output via API (token from env var)
+    if [ -z "$SPLUNK_HEC_TOKEN" ]; then
+      echo "WARNING: SPLUNK_HEC_TOKEN not set, skipping output config"
+      exit 0
+    fi
+
+    # Create or update splunk-hec output
+    curl -sf -X PUT "http://127.0.0.1:9420/api/v1/system/outputs/splunk-hec" \
+      -H "Authorization: Bearer $AUTH" \
+      -H 'Content-Type: application/json' \
+      -d "{
+        \"id\": \"splunk-hec\",
+        \"type\": \"splunk_hec\",
+        \"url\": \"https://10.0.1.200:8088/services/collector\",
+        \"token\": \"$SPLUNK_HEC_TOKEN\",
+        \"index\": \"claude\",
+        \"source\": \"cribl-edge\",
+        \"sourcetype\": \"claude:code:session\",
+        \"rejectUnauthorized\": false,
+        \"concurrency\": 5,
+        \"maxPayloadSizeKB\": 4096,
+        \"compress\": true,
+        \"onBackpressure\": \"block\"
+      }" 2>&1 || \
+    curl -sf -X POST "http://127.0.0.1:9420/api/v1/system/outputs" \
+      -H "Authorization: Bearer $AUTH" \
+      -H 'Content-Type: application/json' \
+      -d "{
+        \"id\": \"splunk-hec\",
+        \"type\": \"splunk_hec\",
+        \"url\": \"https://10.0.1.200:8088/services/collector\",
+        \"token\": \"$SPLUNK_HEC_TOKEN\",
+        \"index\": \"claude\",
+        \"source\": \"cribl-edge\",
+        \"sourcetype\": \"claude:code:session\",
+        \"rejectUnauthorized\": false,
+        \"concurrency\": 5,
+        \"maxPayloadSizeKB\": 4096,
+        \"compress\": true,
+        \"onBackpressure\": \"block\"
+      }" 2>&1
+
+    echo "Splunk HEC output configured"
+
+    # Update default output to route to splunk-hec
+    curl -sf -X PATCH "http://127.0.0.1:9420/api/v1/system/outputs/default" \
+      -H "Authorization: Bearer $AUTH" \
+      -H 'Content-Type: application/json' \
+      -d '{"id":"default","type":"default","defaultId":"splunk-hec"}' 2>&1
+
+    echo "Default output set to splunk-hec"

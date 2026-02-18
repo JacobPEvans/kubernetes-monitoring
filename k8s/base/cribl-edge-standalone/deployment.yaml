@@ -39,6 +39,12 @@ spec:
                   name: splunk-hec-config
                   key: token
                   optional: true
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - /opt/cribl-scripts/setup-edge.sh
           volumeMounts:
             - name: claude-logs
               mountPath: /home/claude/.claude
@@ -53,20 +59,23 @@ spec:
               mountPath: /var/log/ai-jobs
               readOnly: true
             - name: cribl-config
-              mountPath: /opt/cribl/local/edge/inputs.yml
-              subPath: inputs.yml
+              mountPath: /opt/cribl/local/cc-edge-claude-code/inputs.yml
+              subPath: pack-inputs-override.yml
               readOnly: true
             - name: cribl-config
-              mountPath: /opt/cribl/local/cribl/outputs.yml
-              subPath: outputs.yml
+              mountPath: /opt/cribl-scripts/setup-edge.sh
+              subPath: setup-edge.sh
+              readOnly: true
+            - name: pack-source
+              mountPath: /packs
               readOnly: true
           resources:
             requests:
-              memory: "512Mi"
-              cpu: "250m"
-            limits:
               memory: "1Gi"
-              cpu: "1"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2"
           livenessProbe:
             exec:
               command:
@@ -105,3 +114,7 @@ spec:
         - name: cribl-config
           configMap:
             name: cribl-edge-standalone-config
+        - name: pack-source
+          hostPath:
+            path: PLACEHOLDER_HOME_DIR/git/kubernetes-monitoring/main/packs
+            type: DirectoryOrCreate
