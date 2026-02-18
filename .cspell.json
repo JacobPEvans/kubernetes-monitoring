@@ -10,6 +10,7 @@
     "doppler",
     "gitignored",
     "hostpath",
+    "kubectl",
     "kustomization",
     "kustomize",
     "lastmodified",
@@ -18,6 +19,7 @@
     "otlp",
     "otlphttp",
     "rollouts",
+    "sops",
     "sourcetype",
     "statefulset",
     "statefulsets",
@@ -26,7 +28,12 @@
     "worktrees"
   ],
   "ignorePaths": [
+    "packs/",
+    "k8s/overlays/",
+    "*.crbl",
+    "LICENSE",
     "secrets.enc.yaml",
+    "secrets.enc.yaml.example",
     ".sops.yaml"
   ]
 }
