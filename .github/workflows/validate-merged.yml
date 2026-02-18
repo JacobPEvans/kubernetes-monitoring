@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths: ['k8s/**', 'scripts/**']
 
+permissions:
+  contents: read
+
 jobs:
   validate-current-and-recent:
     runs-on: ubuntu-latest
