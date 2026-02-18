@@ -15,7 +15,7 @@ spec:
       labels:
         app: cribl-stream-managed
     spec:
-      priorityClassName: monitoring-high
+      priorityClassName: monitoring-normal
       containers:
         - name: cribl-stream
           image: cribl/cribl:latest
