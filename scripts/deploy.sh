@@ -78,8 +78,12 @@ echo ""
 # Step 3: Clean up old cribl-stream resources (replaced by standalone + managed)
 # Must run before apply to free NodePort 30900 for cribl-stream-standalone-ui
 echo "--- Step 3: Cleaning up old cribl-stream deployment ---"
-kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment cribl-stream 2>/dev/null && echo "  Deleted: deployment/cribl-stream" || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream cribl-stream-ui 2>/dev/null && echo "  Deleted: service/cribl-stream, service/cribl-stream-ui" || true
+if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment cribl-stream 2>/dev/null; then
+  echo "  Deleted: deployment/cribl-stream"
+fi
+if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream cribl-stream-ui 2>/dev/null; then
+  echo "  Deleted: service/cribl-stream, service/cribl-stream-ui"
+fi
 echo ""
 
 # Step 4: Apply kustomize
