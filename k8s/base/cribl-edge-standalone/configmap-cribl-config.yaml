@@ -63,10 +63,10 @@ data:
     fi
 
     # Phase 4: Write local override for pack inputs with resolved path
-    # Cribl does NOT resolve ${VAR} in file input paths from either
-    # OS env vars or its internal vars system at boot time. The pack's
-    # default inputs.yml uses ${CLAUDE_USER} which stays literal.
-    # Writing a local override with the resolved path fixes this.
+    # The upstream pack is being updated to use ${CLAUDE_HOME} instead of
+    # the broken ${CLAUDE_USER}. This local override resolves the shell
+    # variable $CLAUDE_HOME at boot time, since Cribl does NOT expand
+    # ${VAR} in YAML config files.
     mkdir -p /opt/cribl/local/cc-edge-claude-code
     cat > /opt/cribl/local/cc-edge-claude-code/inputs.yml << OVERRIDE
     inputs:
@@ -92,12 +92,12 @@ data:
         includeUnidentifiableBinary: false
         recurse: true
         type: file
-        path: /home/$CLAUDE_USER/.claude/projects/
+        path: $CLAUDE_HOME/.claude/projects/
         metadata:
           - name: datatype
             value: "'claude-code'"
     OVERRIDE
-    echo "Pack input override written with path=/home/$CLAUDE_USER/.claude/projects/"
+    echo "Pack input override written with path=$CLAUDE_HOME/.claude/projects/"
 
     # Phase 5: Configure Splunk HEC output via API (token from env var)
     if [ -z "$SPLUNK_HEC_TOKEN" ]; then

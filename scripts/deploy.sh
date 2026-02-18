@@ -20,17 +20,21 @@ echo ""
 # Step 2: Create secrets
 echo "--- Step 2: Creating secrets ---"
 
-# Cribl Cloud config (managed edge)
+# Cribl Cloud config (edge + stream master URLs)
 # Supports: CRIBL_DIST_MASTER_URL (Doppler) or CRIBL_CLOUD_MASTER_URL (SOPS)
-CRIBL_MASTER="${CRIBL_DIST_MASTER_URL:-${CRIBL_CLOUD_MASTER_URL:-}}"
-if [ -n "$CRIBL_MASTER" ]; then
+CRIBL_EDGE_MASTER="${CRIBL_DIST_MASTER_URL:-${CRIBL_CLOUD_MASTER_URL:-}}"
+CRIBL_STREAM_MASTER="${CRIBL_STREAM_MASTER_URL:-}"
+CLOUD_ARGS=()
+[ -n "$CRIBL_EDGE_MASTER" ] && CLOUD_ARGS+=(--from-literal=master-url="$CRIBL_EDGE_MASTER")
+[ -n "$CRIBL_STREAM_MASTER" ] && CLOUD_ARGS+=(--from-literal=stream-master-url="$CRIBL_STREAM_MASTER")
+if [ ${#CLOUD_ARGS[@]} -gt 0 ]; then
   kubectl --context "$CONTEXT" create secret generic cribl-cloud-config \
     --namespace "$NAMESPACE" \
-    --from-literal=master-url="$CRIBL_MASTER" \
+    "${CLOUD_ARGS[@]}" \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
   echo "  Created: cribl-cloud-config"
 else
-  echo "  SKIPPED: cribl-cloud-config (no Cribl master URL configured)"
+  echo "  SKIPPED: cribl-cloud-config (no Cribl master URLs configured)"
   echo "           Set CRIBL_DIST_MASTER_URL or CRIBL_CLOUD_MASTER_URL, or use: make deploy-doppler"
 fi
 
@@ -71,27 +75,37 @@ else
 fi
 echo ""
 
-# Step 3: Apply kustomize
-echo "--- Step 3: Applying kustomize overlay ---"
+# Step 3: Clean up old cribl-stream resources (replaced by standalone + managed)
+# Must run before apply to free NodePort 30900 for cribl-stream-standalone-ui
+echo "--- Step 3: Cleaning up old cribl-stream deployment ---"
+kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment cribl-stream 2>/dev/null && echo "  Deleted: deployment/cribl-stream" || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream cribl-stream-ui 2>/dev/null && echo "  Deleted: service/cribl-stream, service/cribl-stream-ui" || true
+echo ""
+
+# Step 4: Apply kustomize
+echo "--- Step 4: Applying kustomize overlay ---"
 kubectl --context "$CONTEXT" apply -k "$REPO_ROOT/k8s/overlays/local/"
 echo ""
 
-# Step 4: Wait for rollouts
-echo "--- Step 4: Waiting for rollouts ---"
+# Step 5: Wait for rollouts
+echo "--- Step 5: Waiting for rollouts ---"
 kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/otel-collector --timeout=120s || true
 kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-edge-managed --timeout=120s || true
 kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-edge-standalone --timeout=120s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-stream --timeout=120s || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-stream-standalone --timeout=180s || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-stream-managed --timeout=120s || true
 echo ""
 
-# Step 5: Print endpoints
+# Step 6: Print endpoints
 echo "=== Deployment Complete ==="
 echo ""
 echo "Service Endpoints:"
-echo "  OTEL gRPC:              localhost:30317"
-echo "  OTEL HTTP:              localhost:30318"
-echo "  Cribl Stream UI:        http://localhost:30900"
-echo "  Cribl Edge Standalone:  http://localhost:30910"
+echo "  OTEL gRPC:                   localhost:30317"
+echo "  OTEL HTTP:                   localhost:30318"
+echo "  Cribl Stream Standalone UI:  http://localhost:30900  (admin / CRIBL_STREAM_PASSWORD)"
+echo "  Cribl Edge Standalone UI:    http://localhost:30910"
+echo ""
+echo "Note: cribl-stream-managed has no UI (cloud-managed worker)."
 echo ""
 echo "Verify:"
 echo "  kubectl --context $CONTEXT get all -n $NAMESPACE"

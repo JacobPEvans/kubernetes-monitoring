@@ -29,8 +29,8 @@ spec:
           env:
             - name: CRIBL_DIST_MODE
               value: "edge"
-            - name: CLAUDE_USER
-              value: "claude"
+            - name: CLAUDE_HOME
+              value: "/home/claude"
             - name: CRIBL_EDGE_API_HOST
               value: "0.0.0.0"
             - name: SPLUNK_HEC_TOKEN

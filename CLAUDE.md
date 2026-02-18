@@ -27,6 +27,18 @@ Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 ## Architecture
 
+Five deployments in the monitoring namespace:
+
+| Deployment | Role | UI |
+|------------|------|-----|
+| `otel-collector` | OTLP receiver, forwards to managed edge | None |
+| `cribl-edge-managed` | Cloud-managed edge, receives OTLP on :9420 | None |
+| `cribl-edge-standalone` | Local edge with pack, Splunk HEC output | :30910 |
+| `cribl-stream-standalone` | Local Stream leader with UI | :30900 |
+| `cribl-stream-managed` | Cloud-managed Stream worker | None |
+
+Directory layout:
+
 - `k8s/base/` - Kustomize base manifests (portable, no real paths)
 - `k8s/overlays/local/` - Generated overlay with real volume paths (gitignored)
 - `scripts/` - Deployment and overlay generation scripts
