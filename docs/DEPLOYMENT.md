@@ -18,6 +18,7 @@ All secrets are stored in SOPS-encrypted `secrets.enc.yaml`, including the Doppl
 | `DOPPLER_CONFIG` | Doppler config name (for Cribl secrets) |
 | `CRIBL_CLOUD_MASTER_URL` | Alternative: direct Cribl URL (if not using Doppler) |
 | `CRIBL_STREAM_PASSWORD` | Cribl Stream admin password |
+| `SPLUNK_HEC_TOKEN` | Splunk HEC token (standalone edge to Splunk) |
 | `CLAUDE_API_KEY` | AI container API key |
 | `GEMINI_API_KEY` | AI container API key |
 

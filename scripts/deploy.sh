@@ -45,6 +45,17 @@ else
   echo "  SKIPPED: cribl-stream-admin (CRIBL_STREAM_PASSWORD not set)"
 fi
 
+# Splunk HEC config (standalone edge)
+if [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
+  kubectl --context "$CONTEXT" create secret generic splunk-hec-config \
+    --namespace "$NAMESPACE" \
+    --from-literal=token="$SPLUNK_HEC_TOKEN" \
+    --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
+  echo "  Created: splunk-hec-config"
+else
+  echo "  SKIPPED: splunk-hec-config (SPLUNK_HEC_TOKEN not set)"
+fi
+
 # AI API keys
 if [ -n "${CLAUDE_API_KEY:-}" ] || [ -n "${GEMINI_API_KEY:-}" ]; then
   ARGS=()

@@ -16,28 +16,9 @@ spec:
         app: cribl-edge-managed
     spec:
       priorityClassName: monitoring-high
-      initContainers:
-        - name: install-cribl-pack
-          image: busybox:1.37
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              mkdir -p /opt/cribl/data/packs
-              if [ -f /packs/cc-edge-claude-code.crbl ]; then
-                cp /packs/cc-edge-claude-code.crbl /opt/cribl/data/packs/
-                echo "Pack installed successfully"
-              else
-                echo "WARNING: Pack not found at /packs/cc-edge-claude-code.crbl, starting without it"
-              fi
-          volumeMounts:
-            - name: pack-source
-              mountPath: /packs
-              readOnly: true
-            - name: cribl-data
-              mountPath: /opt/cribl/data
       containers:
         - name: cribl-edge
-          image: cribl/cribl:4.10.1
+          image: cribl/cribl:latest
           ports:
             - name: otel
               containerPort: 9420
@@ -48,6 +29,8 @@ spec:
           env:
             - name: CRIBL_DIST_MODE
               value: "managed-edge"
+            - name: CLAUDE_USER
+              value: "claude"
             - name: CRIBL_DIST_MASTER_URL
               valueFrom:
                 secretKeyRef:
@@ -55,7 +38,7 @@ spec:
                   key: master-url
           volumeMounts:
             - name: claude-logs
-              mountPath: /var/log/claude
+              mountPath: /home/claude/.claude
               readOnly: true
             - name: ollama-logs
               mountPath: /var/log/ollama
@@ -66,8 +49,6 @@ spec:
             - name: ai-job-logs
               mountPath: /var/log/ai-jobs
               readOnly: true
-            - name: cribl-data
-              mountPath: /opt/cribl/data
           resources:
             requests:
               memory: "512Mi"
@@ -110,9 +91,3 @@ spec:
           hostPath:
             path: PLACEHOLDER_HOME_DIR/logs/ai-jobs
             type: DirectoryOrCreate
-        - name: pack-source
-          hostPath:
-            path: PLACEHOLDER_HOME_DIR/git/kubernetes-monitoring/main/packs
-            type: DirectoryOrCreate
-        - name: cribl-data
-          emptyDir: {}
