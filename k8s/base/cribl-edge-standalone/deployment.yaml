@@ -59,10 +59,6 @@ spec:
               mountPath: /var/log/ai-jobs
               readOnly: true
             - name: cribl-config
-              mountPath: /opt/cribl/local/cc-edge-claude-code/inputs.yml
-              subPath: pack-inputs-override.yml
-              readOnly: true
-            - name: cribl-config
               mountPath: /opt/cribl-scripts/setup-edge.sh
               subPath: setup-edge.sh
               readOnly: true

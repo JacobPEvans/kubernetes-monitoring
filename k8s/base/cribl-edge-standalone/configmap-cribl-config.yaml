@@ -4,34 +4,6 @@ metadata:
   name: cribl-edge-standalone-config
   namespace: monitoring
 data:
-  pack-inputs-override.yml: |
-    inputs:
-      claude-code-logs:
-        disabled: false
-        sendToRoutes: true
-        pqEnabled: false
-        streamtags: []
-        mode: manual
-        interval: 10
-        filenames:
-          - "*.jsonl"
-        filterArchivedFiles: false
-        tailOnly: false
-        idleTimeout: 300
-        checkFileModTime: false
-        forceText: false
-        hashLen: 256
-        staleChannelFlushMs: 10000
-        suppressMissingPathErrors: false
-        deleteFiles: false
-        saltHash: false
-        includeUnidentifiableBinary: false
-        recurse: true
-        type: file
-        path: /home/claude/.claude/projects/
-        metadata:
-          - name: datatype
-            value: "'claude-code'"
   setup-edge.sh: |
     #!/bin/sh
     # Configure Cribl Edge: install pack + create Splunk HEC output.
@@ -90,7 +62,44 @@ data:
       echo "Pack install result: $RESULT"
     fi
 
-    # Phase 4: Configure Splunk HEC output via API (token from env var)
+    # Phase 4: Write local override for pack inputs with resolved path
+    # Cribl does NOT resolve ${VAR} in file input paths from either
+    # OS env vars or its internal vars system at boot time. The pack's
+    # default inputs.yml uses ${CLAUDE_USER} which stays literal.
+    # Writing a local override with the resolved path fixes this.
+    mkdir -p /opt/cribl/local/cc-edge-claude-code
+    cat > /opt/cribl/local/cc-edge-claude-code/inputs.yml << OVERRIDE
+    inputs:
+      claude-code-logs:
+        disabled: false
+        sendToRoutes: true
+        pqEnabled: false
+        streamtags: []
+        mode: manual
+        interval: 10
+        filenames:
+          - "*.jsonl"
+        filterArchivedFiles: false
+        tailOnly: false
+        idleTimeout: 300
+        checkFileModTime: false
+        forceText: false
+        hashLen: 256
+        staleChannelFlushMs: 10000
+        suppressMissingPathErrors: false
+        deleteFiles: false
+        saltHash: false
+        includeUnidentifiableBinary: false
+        recurse: true
+        type: file
+        path: /home/$CLAUDE_USER/.claude/projects/
+        metadata:
+          - name: datatype
+            value: "'claude-code'"
+    OVERRIDE
+    echo "Pack input override written with path=/home/$CLAUDE_USER/.claude/projects/"
+
+    # Phase 5: Configure Splunk HEC output via API (token from env var)
     if [ -z "$SPLUNK_HEC_TOKEN" ]; then
       echo "WARNING: SPLUNK_HEC_TOKEN not set, skipping output config"
       exit 0
@@ -141,3 +150,16 @@ data:
       -d '{"id":"default","type":"default","defaultId":"splunk-hec"}' 2>&1
 
     echo "Default output set to splunk-hec"
+
+    # Phase 6: Commit and restart to apply all config changes
+    # The commit persists API-created outputs and the local override.
+    # The restart forces the worker to reload with the resolved paths.
+    curl -sf -X POST "http://127.0.0.1:9420/api/v1/version/commit" \
+      -H "Authorization: Bearer $AUTH" \
+      -H 'Content-Type: application/json' \
+      -d '{"message":"Setup edge: pack, inputs override, Splunk output"}' 2>&1
+    echo "Config committed"
+
+    curl -sf -X POST "http://127.0.0.1:9420/api/v1/system/settings/restart" \
+      -H "Authorization: Bearer $AUTH" 2>&1
+    echo "Worker restart triggered"
