@@ -36,7 +36,10 @@
     "sourcetype",
     "devnull",
     "backpressure",
-    "streamtags"
+    "streamtags",
+    "kubeconform",
+    "yamllint",
+    "bmuschko"
   ],
   "ignorePaths": [
     "packs/",

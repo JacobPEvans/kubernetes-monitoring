@@ -46,10 +46,18 @@ Directory layout:
 - `packs/` - Cribl Edge pack files (.crbl)
 - `docs/` - Extended documentation
 
+## CI
+
+GitHub Actions run on every push and PR:
+
+- **validate.yml** — Kustomize build + kubeconform schema validation + pre-commit hooks
+- **validate-merged.yml** — Post-merge validation of current + last 2 commits on main
+
 ## Testing
 
 ```bash
-make validate     # Validate kustomize builds cleanly
-make deploy       # Full deploy to OrbStack
-make status       # Check pod status
+make validate          # Validate kustomize builds + schemas
+make validate-schemas  # Schema validation only
+make deploy            # Full deploy to OrbStack
+make status            # Check pod status
 ```

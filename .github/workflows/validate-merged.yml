@@ -1,0 +1,32 @@
+name: Validate Merged
+
+on:
+  push:
+    branches: [main]
+    paths: ['k8s/**', 'scripts/**']
+
+jobs:
+  validate-current-and-recent:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ref:
+          - main
+          - main~1
+          - main~2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.ref }}
+          fetch-depth: 3
+
+      - name: Install kubeconform
+        uses: bmuschko/setup-kubeconform@v1
+
+      - name: Validate
+        env:
+          COMMIT_REF: ${{ matrix.ref }}
+        run: |
+          echo "=== Validating commit: $(git log --oneline -1) ==="
+          kubectl kustomize k8s/base/ > /tmp/rendered.yaml
+          kubeconform -strict -summary -output text /tmp/rendered.yaml

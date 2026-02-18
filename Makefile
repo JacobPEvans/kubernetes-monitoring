@@ -1,4 +1,4 @@
-.PHONY: help validate generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini clean
+.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini clean
 
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
@@ -6,8 +6,12 @@ NAMESPACE := monitoring
 help: ## Show all targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-validate: ## Validate kustomize base builds cleanly
-	kubectl kustomize k8s/base/
+validate: ## Validate kustomize builds and schemas
+	kubectl kustomize k8s/base/ > /dev/null
+	kubectl kustomize k8s/base/ | kubeconform -strict -summary -output text
+
+validate-schemas: ## Validate rendered manifests against K8s schemas
+	kubectl kustomize k8s/base/ | kubeconform -strict -summary -output text
 
 generate-overlay: ## Generate local overlay with real volume paths
 	./scripts/generate-overlay.sh
