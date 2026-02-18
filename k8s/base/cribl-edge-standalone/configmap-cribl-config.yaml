@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cribl-edge-standalone-config
+  namespace: monitoring
+data:
+  inputs.yml: |
+    inputs:
+      claude-code-logs:
+        type: file
+        disabled: false
+        sendToRoutes: true
+        mode: manual
+        path: /home/claude/.claude/projects/
+        interval: 10
+        recurse: true
+        filenames:
+          - "*.jsonl"
+        staleChannelFlushMs: 10000
+        preprocess:
+          disabled: true
+        fields:
+          - name: datatype
+            value: "'claude-code'"
+  outputs.yml: |
+    outputs:
+      splunk-hec:
+        type: splunk_hec
+        url: https://10.0.1.200:8088/services/collector
+        token: "${SPLUNK_HEC_TOKEN}"
+        index: claude
+        source: cribl-edge
+        sourcetype: "claude:code:session"
+        rejectUnauthorized: false
+        concurrency: 5
+        maxPayloadSizeKB: 4096
+        compress: true
+        onBackpressure: block
+      devnull:
+        type: devnull
+      default:
+        defaultId: splunk-hec
+        type: default
+  routes.yml: |
+    routes:
+      - id: claude-code-to-splunk
+        name: "Claude Code to Splunk"
+        filter: "__inputId=='file:claude-code-logs'"
+        pipeline: main
+        output: splunk-hec
+        final: true
+        description: "Route Claude Code session logs to Splunk HEC"
+      - id: default
+        name: default
+        filter: "true"
+        output: devnull
+        final: true

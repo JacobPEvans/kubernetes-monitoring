@@ -3,5 +3,6 @@ kind: Kustomization
 
 resources:
   - deployment.yaml
+  - configmap-cribl-config.yaml
   - service.yaml
   - service-ui.yaml

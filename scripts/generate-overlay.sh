@@ -64,14 +64,6 @@ metadata:
 spec:
   template:
     spec:
-      initContainers:
-        - name: install-cribl-pack
-          volumeMounts:
-            - name: pack-source
-              mountPath: /packs
-              readOnly: true
-            - name: cribl-data
-              mountPath: /opt/cribl/data
       volumes:
         - name: claude-logs
           hostPath:
@@ -89,12 +81,6 @@ spec:
           hostPath:
             path: ${HOME_DIR}/logs/ai-jobs
             type: DirectoryOrCreate
-        - name: pack-source
-          hostPath:
-            path: ${HOME_DIR}/git/kubernetes-monitoring/main/packs
-            type: DirectoryOrCreate
-        - name: cribl-data
-          emptyDir: {}
 EOF
 
 # Cribl Edge Standalone volume patch
@@ -107,14 +93,6 @@ metadata:
 spec:
   template:
     spec:
-      initContainers:
-        - name: install-cribl-pack
-          volumeMounts:
-            - name: pack-source
-              mountPath: /packs
-              readOnly: true
-            - name: cribl-data
-              mountPath: /opt/cribl/data
       volumes:
         - name: claude-logs
           hostPath:
@@ -132,12 +110,9 @@ spec:
           hostPath:
             path: ${HOME_DIR}/logs/ai-jobs
             type: DirectoryOrCreate
-        - name: pack-source
-          hostPath:
-            path: ${HOME_DIR}/git/kubernetes-monitoring/main/packs
-            type: DirectoryOrCreate
-        - name: cribl-data
-          emptyDir: {}
+        - name: cribl-config
+          configMap:
+            name: cribl-edge-standalone-config
 EOF
 
 echo "Overlay generated successfully."

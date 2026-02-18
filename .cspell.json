@@ -32,7 +32,10 @@
     "worktrees",
     "dockerfiles",
     "doppler",
-    "mgmt"
+    "mgmt",
+    "sourcetype",
+    "devnull",
+    "backpressure"
   ],
   "ignorePaths": [
     "packs/",
