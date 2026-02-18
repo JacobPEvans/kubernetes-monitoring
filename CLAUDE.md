@@ -8,8 +8,22 @@ Kubernetes monitoring manifests for local OrbStack cluster.
 - **Overlays are gitignored**: `k8s/overlays/local/` is generated at deploy time by `scripts/generate-overlay.sh` and must not be committed.
 - **Deploy workflow**: `make deploy` generates overlay + creates secrets + applies kustomize.
 - **Secrets**: All secrets in SOPS (`secrets.enc.yaml`). Doppler project/config stored in SOPS, never hardcoded. Never commit plaintext secrets.
-- **Image tags**: Pin to specific versions, not `:latest`.
+- **Image tags**: Use `latest` for upstream images (Cribl, OTEL, etc.). Do NOT pin specific versions — Renovate and upstream release tracking handle updates.
 - **Worktrees**: Use `/init-worktree` before starting work. Work in feature branches.
+
+## Deployment Verification (MANDATORY)
+
+**Every change to k8s manifests MUST be verified by actually deploying to the cluster.** `make validate` alone is NOT sufficient.
+
+After modifying any manifest, ConfigMap, or deployment script:
+
+1. `make deploy-doppler` (or `kubectl apply -k k8s/overlays/local/` if SOPS key unavailable)
+2. Wait for rollouts: `kubectl --context orbstack -n monitoring rollout status deployment/<name>`
+3. Verify pods are Running and Ready: `make status`
+4. Check logs for errors: `kubectl --context orbstack -n monitoring logs deploy/<name> --tail=20`
+5. If health probes fail, check startup logs for the specific pod (not just `deploy/`)
+
+Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 ## Architecture
 

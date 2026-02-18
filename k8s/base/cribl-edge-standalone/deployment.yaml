@@ -18,7 +18,7 @@ spec:
       priorityClassName: monitoring-high
       containers:
         - name: cribl-edge
-          image: cribl/cribl:4.13.0
+          image: cribl/cribl:latest
           ports:
             - name: otel
               containerPort: 9420
@@ -53,7 +53,12 @@ spec:
               mountPath: /var/log/ai-jobs
               readOnly: true
             - name: cribl-config
-              mountPath: /opt/cribl/local/cribl/
+              mountPath: /opt/cribl/local/edge/inputs.yml
+              subPath: inputs.yml
+              readOnly: true
+            - name: cribl-config
+              mountPath: /opt/cribl/local/cribl/outputs.yml
+              subPath: outputs.yml
               readOnly: true
           resources:
             requests:

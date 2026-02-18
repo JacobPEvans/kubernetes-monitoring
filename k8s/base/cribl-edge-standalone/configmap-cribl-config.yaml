@@ -9,7 +9,7 @@ data:
       claude-code-logs:
         type: file
         disabled: false
-        sendToRoutes: true
+        sendToRoutes: false
         mode: manual
         path: /home/claude/.claude/projects/
         interval: 10
@@ -22,6 +22,8 @@ data:
         fields:
           - name: datatype
             value: "'claude-code'"
+        connections:
+          - output: splunk-hec
   outputs.yml: |
     outputs:
       splunk-hec:
@@ -41,17 +43,3 @@ data:
       default:
         defaultId: splunk-hec
         type: default
-  routes.yml: |
-    routes:
-      - id: claude-code-to-splunk
-        name: "Claude Code to Splunk"
-        filter: "__inputId=='file:claude-code-logs'"
-        pipeline: main
-        output: splunk-hec
-        final: true
-        description: "Route Claude Code session logs to Splunk HEC"
-      - id: default
-        name: default
-        filter: "true"
-        output: devnull
-        final: true

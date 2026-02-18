@@ -18,7 +18,7 @@ spec:
       priorityClassName: monitoring-high
       containers:
         - name: cribl-edge
-          image: cribl/cribl:4.13.0
+          image: cribl/cribl:latest
           ports:
             - name: otel
               containerPort: 9420
