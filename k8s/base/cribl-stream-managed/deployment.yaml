@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: cribl-stream
+  name: cribl-stream-managed
   namespace: monitoring
   labels:
-    app: cribl-stream
+    app: cribl-stream-managed
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: cribl-stream
+      app: cribl-stream-managed
   template:
     metadata:
       labels:
-        app: cribl-stream
+        app: cribl-stream-managed
     spec:
       priorityClassName: monitoring-normal
       containers:
@@ -26,18 +26,14 @@ spec:
             - name: inputs
               containerPort: 10080
               protocol: TCP
-            - name: leader
-              containerPort: 4200
-              protocol: TCP
           env:
             - name: CRIBL_DIST_MODE
-              value: "master"
-            - name: CRIBL_ADMIN_PASSWORD
+              value: "worker"
+            - name: CRIBL_DIST_MASTER_URL
               valueFrom:
                 secretKeyRef:
-                  name: cribl-stream-admin
-                  key: password
-                  optional: true
+                  name: cribl-cloud-config
+                  key: stream-master-url
           volumeMounts:
             - name: cribl-data
               mountPath: /opt/cribl/data
@@ -46,21 +42,25 @@ spec:
           resources:
             requests:
               memory: "512Mi"
-              cpu: "500m"
+              cpu: "250m"
             limits:
               memory: "1Gi"
               cpu: "1"
           livenessProbe:
-            httpGet:
-              path: /api/v1/health
-              port: 9000
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "curl -sf http://127.0.0.1:9000/api/v1/health || exit 1"
             initialDelaySeconds: 60
             periodSeconds: 30
             failureThreshold: 5
           readinessProbe:
-            httpGet:
-              path: /api/v1/health
-              port: 9000
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "curl -sf http://127.0.0.1:9000/api/v1/health || exit 1"
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5

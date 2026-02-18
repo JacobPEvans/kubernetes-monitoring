@@ -16,8 +16,9 @@ All secrets are stored in SOPS-encrypted `secrets.enc.yaml`, including the Doppl
 |--------|---------|
 | `DOPPLER_PROJECT` | Doppler project name (for Cribl secrets) |
 | `DOPPLER_CONFIG` | Doppler config name (for Cribl secrets) |
-| `CRIBL_CLOUD_MASTER_URL` | Alternative: direct Cribl URL (if not using Doppler) |
-| `CRIBL_STREAM_PASSWORD` | Cribl Stream admin password |
+| `CRIBL_CLOUD_MASTER_URL` | Alternative: direct Cribl Edge URL (if not using Doppler) |
+| `CRIBL_STREAM_MASTER_URL` | Cribl Cloud Stream worker URL (`tls://TOKEN@org:4200?group=...`) |
+| `CRIBL_STREAM_PASSWORD` | Cribl Stream standalone admin password |
 | `SPLUNK_HEC_TOKEN` | Splunk HEC token (standalone edge to Splunk) |
 | `CLAUDE_API_KEY` | AI container API key |
 | `GEMINI_API_KEY` | AI container API key |
@@ -64,6 +65,19 @@ make validate
 make deploy-doppler
 ```
 
+## Cribl Stream
+
+The stack includes two Cribl Stream deployments:
+
+- **cribl-stream-standalone**: Local leader with UI at <http://localhost:30900> (admin / `CRIBL_STREAM_PASSWORD`)
+- **cribl-stream-managed**: Cloud-managed worker (requires `CRIBL_STREAM_MASTER_URL`). No local UI.
+
+The managed worker connects to your Cribl Cloud Stream worker group. Configure the worker group in Cribl Cloud first, then set the `CRIBL_STREAM_MASTER_URL` secret.
+
+## OTLP Telemetry
+
+The OTEL Collector forwards telemetry to `cribl-edge-managed:9420`. This requires an OTLP source configured in the Cribl Cloud fleet UI for the managed edge fleet. Without it, data will be dropped.
+
 ## Verify
 
 ```bash
@@ -73,14 +87,17 @@ make status
 # Check OTEL Collector health
 kubectl exec -n monitoring deploy/otel-collector -- curl -s http://localhost:13133/
 
-# Check Cribl Edge managed logs for pack
-kubectl logs -n monitoring deploy/cribl-edge-managed | grep -i pack
+# Check Cribl Edge managed logs
+kubectl logs -n monitoring deploy/cribl-edge-managed --tail=10
 
 # Check Cribl Edge standalone UI
 open http://localhost:30910
 
-# Check Cribl Stream UI
+# Check Cribl Stream standalone UI
 open http://localhost:30900
+
+# Verify OTEL can reach managed edge
+kubectl exec -n monitoring deploy/otel-collector -- curl -sf http://cribl-edge-managed:9420/api/v1/health
 ```
 
 ## Update

@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: cribl-stream
+  name: cribl-stream-managed
   namespace: monitoring
   labels:
-    app: cribl-stream
+    app: cribl-stream-managed
 spec:
   type: ClusterIP
   selector:
-    app: cribl-stream
+    app: cribl-stream-managed
   ports:
     - name: api
       port: 9000
@@ -17,8 +17,4 @@ spec:
     - name: inputs
       port: 10080
       targetPort: 10080
-      protocol: TCP
-    - name: leader
-      port: 4200
-      targetPort: 4200
       protocol: TCP

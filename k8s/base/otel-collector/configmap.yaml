@@ -49,7 +49,9 @@ data:
             action: upsert
 
     exporters:
-      # Forward to Cribl Edge OTEL endpoint
+      # Forward OTLP telemetry to Cribl Edge (managed by Cribl Cloud).
+      # Requires OTLP source configured in Cribl Cloud fleet UI.
+      # Future: redirect to cribl-stream-managed once Stream is cloud-managed.
       otlphttp:
         endpoint: http://cribl-edge-managed:9420
 
