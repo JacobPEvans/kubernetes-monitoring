@@ -1,0 +1,21 @@
+# Overlays (generated at deploy time, contain local paths)
+k8s/overlays/local/
+
+# SOPS encrypted secrets (real values)
+secrets.enc.yaml
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Docker build artifacts
+docker/*/node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.code-workspace

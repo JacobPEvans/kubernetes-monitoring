@@ -1,0 +1,31 @@
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: monitoring-critical
+value: 1000000
+globalDefault: false
+description: "Critical monitoring components (OTEL Collector)"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: monitoring-high
+value: 100000
+globalDefault: false
+description: "High priority monitoring (Cribl Edge)"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: monitoring-normal
+value: 10000
+globalDefault: false
+description: "Normal priority monitoring (Cribl Stream, AI Jobs)"
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: monitoring-low
+value: 1000
+globalDefault: false
+description: "Low priority monitoring (batch jobs)"

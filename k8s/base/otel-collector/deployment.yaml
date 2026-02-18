@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: monitoring
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      priorityClassName: monitoring-critical
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.115.0
+          args:
+            - --config=/etc/otel-collector-config.yaml
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              containerPort: 4318
+              protocol: TCP
+            - name: health
+              containerPort: 13133
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel-collector-config.yaml
+              subPath: otel-collector-config.yaml
+              readOnly: true
+            - name: claude-logs
+              mountPath: /var/log/claude
+              readOnly: true
+            - name: ai-job-logs
+              mountPath: /var/log/ai-jobs
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+        - name: claude-logs
+          hostPath:
+            path: PLACEHOLDER_HOME_DIR/.claude/logs
+            type: DirectoryOrCreate
+        - name: ai-job-logs
+          hostPath:
+            path: PLACEHOLDER_HOME_DIR/logs/ai-jobs
+            type: DirectoryOrCreate

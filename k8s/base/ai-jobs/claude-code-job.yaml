@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: claude-code-job
+  namespace: monitoring
+  labels:
+    app: claude-code-job
+    job-type: ai-ephemeral
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: claude-code-job
+        job-type: ai-ephemeral
+    spec:
+      priorityClassName: monitoring-normal
+      restartPolicy: Never
+      containers:
+        - name: claude-code
+          image: kubernetes-monitoring/claude-code:latest
+          env:
+            - name: CLAUDE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-api-keys
+                  key: claude-api-key
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: logs
+              mountPath: /logs
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+      volumes:
+        - name: workspace
+          hostPath:
+            path: PLACEHOLDER_HOME_DIR/ai-workspace
+            type: DirectoryOrCreate
+        - name: logs
+          hostPath:
+            path: PLACEHOLDER_HOME_DIR/logs/ai-jobs
+            type: DirectoryOrCreate

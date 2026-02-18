@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cribl-edge-managed
+  namespace: monitoring
+  labels:
+    app: cribl-edge-managed
+spec:
+  type: ClusterIP
+  selector:
+    app: cribl-edge-managed
+  ports:
+    - name: otel
+      port: 9420
+      targetPort: 9420
+      protocol: TCP
+    - name: ui
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
