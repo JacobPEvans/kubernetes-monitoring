@@ -1,19 +1,20 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: cribl-edge-managed
+  name: cribl-edge-standalone
   namespace: monitoring
   labels:
-    app: cribl-edge-managed
+    app: cribl-edge-standalone
 spec:
+  serviceName: cribl-edge-standalone
   replicas: 1
   selector:
     matchLabels:
-      app: cribl-edge-managed
+      app: cribl-edge-standalone
   template:
     metadata:
       labels:
-        app: cribl-edge-managed
+        app: cribl-edge-standalone
     spec:
       priorityClassName: monitoring-high
       containers:
@@ -28,16 +29,23 @@ spec:
               protocol: TCP
           env:
             - name: CRIBL_DIST_MODE
-              value: "managed-edge"
+              value: "edge"
             - name: CLAUDE_HOME
               value: "/home/claude"
             - name: CRIBL_EDGE_API_HOST
               value: "0.0.0.0"
-            - name: CRIBL_DIST_MASTER_URL
+            - name: SPLUNK_HEC_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: cribl-cloud-config
-                  key: master-url
+                  name: splunk-hec-config
+                  key: token
+                  optional: true
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - /opt/cribl-scripts/setup-edge.sh
           volumeMounts:
             - name: claude-logs
               mountPath: /home/claude/.claude
@@ -51,13 +59,20 @@ spec:
             - name: ai-job-logs
               mountPath: /var/log/ai-jobs
               readOnly: true
+            - name: cribl-config
+              mountPath: /opt/cribl-scripts/setup-edge.sh
+              subPath: setup-edge.sh
+              readOnly: true
+            - name: pack-source
+              mountPath: /packs
+              readOnly: true
           resources:
             requests:
-              memory: "512Mi"
-              cpu: "250m"
-            limits:
               memory: "1Gi"
-              cpu: "1"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2"
           livenessProbe:
             exec:
               command:
@@ -92,4 +107,11 @@ spec:
         - name: ai-job-logs
           hostPath:
             path: PLACEHOLDER_HOME_DIR/logs/ai-jobs
+            type: DirectoryOrCreate
+        - name: cribl-config
+          configMap:
+            name: cribl-edge-standalone-config
+        - name: pack-source
+          hostPath:
+            path: PLACEHOLDER_HOME_DIR/git/kubernetes-monitoring/main/packs
             type: DirectoryOrCreate
