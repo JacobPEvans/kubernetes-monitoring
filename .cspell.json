@@ -25,7 +25,11 @@
     "statefulsets",
     "streamtags",
     "worktree",
-    "worktrees"
+    "worktrees",
+    "bmuschko",
+    "kubeconform",
+    "pipefail",
+    "yamllint"
   ],
   "ignorePaths": [
     "packs/",
