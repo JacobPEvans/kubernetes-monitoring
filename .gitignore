@@ -1,8 +1,8 @@
 # Overlays (generated at deploy time, contain local paths)
 k8s/overlays/local/
 
-# SOPS encrypted secrets (real values)
-secrets.enc.yaml
+# Unencrypted secrets (never commit plaintext)
+secrets.dec.yaml
 
 # macOS
 .DS_Store
