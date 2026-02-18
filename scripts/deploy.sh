@@ -75,12 +75,24 @@ else
 fi
 echo ""
 
-# Step 3: Clean up old cribl-stream resources (replaced by standalone + managed)
+# Step 3: Clean up old resources from previous deployment model
+# Delete old Deployments (now StatefulSets) and old cribl-stream (now split)
+# Delete non-headless services (clusterIP cannot be changed in-place to None)
 # Must run before apply to free NodePort 30900 for cribl-stream-standalone-ui
-echo "--- Step 3: Cleaning up old cribl-stream deployment ---"
-if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment cribl-stream 2>/dev/null; then
-  echo "  Deleted: deployment/cribl-stream"
-fi
+echo "--- Step 3: Cleaning up old resources ---"
+for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream cribl-stream-standalone cribl-stream-managed; do
+  if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment "$name" 2>/dev/null; then
+    echo "  Deleted: deployment/$name"
+  fi
+done
+# Delete non-headless ClusterIP services (StatefulSets require headless)
+for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-managed cribl-stream-standalone; do
+  if kubectl --context "$CONTEXT" -n "$NAMESPACE" get service "$name" -o jsonpath='{.spec.clusterIP}' 2>/dev/null | grep -qv None; then
+    kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service "$name" 2>/dev/null
+    echo "  Deleted: service/$name (non-headless, will recreate)"
+  fi
+done
+# Delete legacy service names from pre-split era
 if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream cribl-stream-ui 2>/dev/null; then
   echo "  Deleted: service/cribl-stream, service/cribl-stream-ui"
 fi
@@ -93,11 +105,11 @@ echo ""
 
 # Step 5: Wait for rollouts
 echo "--- Step 5: Waiting for rollouts ---"
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/otel-collector --timeout=120s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-edge-managed --timeout=120s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-edge-standalone --timeout=120s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-stream-standalone --timeout=180s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status deployment/cribl-stream-managed --timeout=120s || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/otel-collector --timeout=120s || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-edge-managed --timeout=120s || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-edge-standalone --timeout=120s || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-stream-standalone --timeout=180s || true
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-stream-managed --timeout=120s || true
 echo ""
 
 # Step 6: Print endpoints

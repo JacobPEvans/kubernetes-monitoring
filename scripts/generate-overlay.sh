@@ -33,7 +33,7 @@ EOF
 # OTEL Collector volume patch
 cat > "$PATCHES_DIR/otel-volumes.yaml" << EOF
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: otel-collector
   namespace: monitoring
@@ -57,7 +57,7 @@ EOF
 # Cribl Edge Managed volume patch
 cat > "$PATCHES_DIR/cribl-managed-volumes.yaml" << EOF
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: cribl-edge-managed
   namespace: monitoring
@@ -86,7 +86,7 @@ EOF
 # Cribl Edge Standalone volume patch
 cat > "$PATCHES_DIR/cribl-standalone-volumes.yaml" << EOF
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: cribl-edge-standalone
   namespace: monitoring

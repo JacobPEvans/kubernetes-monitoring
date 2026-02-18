@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: cribl-stream-standalone
   namespace: monitoring
   labels:
     app: cribl-stream-standalone
 spec:
+  serviceName: cribl-stream-standalone
   replicas: 1
   selector:
     matchLabels:
