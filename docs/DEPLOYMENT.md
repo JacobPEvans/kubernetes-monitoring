@@ -4,33 +4,38 @@
 
 - OrbStack with Kubernetes enabled
 - `kubectl` configured with `orbstack` context
-- `sops` and `age` installed (for secret management)
+- `doppler` CLI configured (for Cribl secrets)
+- `sops` and `age` installed (for AI API keys, optional)
 - `kustomize` (bundled with kubectl 1.14+)
 
-## SOPS Setup
+## Secret Sources
 
-1. Ensure your age key is available:
-
-   ```bash
-   # Key should be at ~/.config/sops/age/keys.txt
-   ls ~/.config/sops/age/keys.txt
-   ```
-
-2. Create and encrypt secrets:
-
-   ```bash
-   cp secrets.enc.yaml.example secrets.enc.yaml
-   sops secrets.enc.yaml
-   ```
-
-3. Fill in real values for all secrets.
+| Secret | Source | Doppler Project/Config |
+|--------|--------|------------------------|
+| `CRIBL_DIST_MASTER_URL` | Doppler | `iac-conf-mgmt/prd` |
+| `CRIBL_TOKEN` | Doppler | `iac-conf-mgmt/prd` |
+| `CLAUDE_API_KEY` | SOPS or manual | N/A |
+| `GEMINI_API_KEY` | SOPS or manual | N/A |
 
 ## Deploy
 
-### Quick Deploy
+### Quick Deploy (Doppler)
 
 ```bash
-sops exec-env secrets.enc.yaml 'make deploy'
+make deploy-doppler
+```
+
+This runs `doppler run --project iac-conf-mgmt --config prd -- ./scripts/deploy.sh`, injecting Cribl secrets automatically.
+
+### With SOPS (for AI keys)
+
+```bash
+# Set up SOPS secrets (one-time)
+cp secrets.enc.yaml.example secrets.enc.yaml
+sops secrets.enc.yaml
+
+# Deploy with both Doppler + SOPS
+doppler run --project iac-conf-mgmt --config prd -- sops exec-env secrets.enc.yaml './scripts/deploy.sh'
 ```
 
 ### Step-by-Step
@@ -42,8 +47,8 @@ make generate-overlay
 # 2. Validate kustomize output
 make validate
 
-# 3. Deploy with secrets injected
-sops exec-env secrets.enc.yaml './scripts/deploy.sh'
+# 3. Deploy with Doppler secrets
+make deploy-doppler
 ```
 
 ## Verify
@@ -70,8 +75,7 @@ open http://localhost:30900
 After modifying base manifests:
 
 ```bash
-# Re-deploy
-sops exec-env secrets.enc.yaml 'make deploy'
+make deploy-doppler
 ```
 
 ## Tear Down

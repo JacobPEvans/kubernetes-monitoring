@@ -21,14 +21,17 @@ echo ""
 echo "--- Step 2: Creating secrets ---"
 
 # Cribl Cloud config (managed edge)
-if [ -n "${CRIBL_CLOUD_MASTER_URL:-}" ]; then
+# Supports: CRIBL_DIST_MASTER_URL (Doppler) or CRIBL_CLOUD_MASTER_URL (SOPS)
+CRIBL_MASTER="${CRIBL_DIST_MASTER_URL:-${CRIBL_CLOUD_MASTER_URL:-}}"
+if [ -n "$CRIBL_MASTER" ]; then
   kubectl --context "$CONTEXT" create secret generic cribl-cloud-config \
     --namespace "$NAMESPACE" \
-    --from-literal=master-url="$CRIBL_CLOUD_MASTER_URL" \
+    --from-literal=master-url="$CRIBL_MASTER" \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
   echo "  Created: cribl-cloud-config"
 else
-  echo "  SKIPPED: cribl-cloud-config (CRIBL_CLOUD_MASTER_URL not set)"
+  echo "  SKIPPED: cribl-cloud-config (CRIBL_DIST_MASTER_URL not set)"
+  echo "           Run: doppler run --project iac-conf-mgmt --config prd -- make deploy"
 fi
 
 # Cribl Stream admin password

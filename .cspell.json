@@ -30,7 +30,9 @@
     "commitlint",
     "worktree",
     "worktrees",
-    "dockerfiles"
+    "dockerfiles",
+    "doppler",
+    "mgmt"
   ],
   "ignorePaths": [
     "packs/",
