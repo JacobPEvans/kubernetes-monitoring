@@ -20,6 +20,7 @@ All secrets are stored in SOPS-encrypted `secrets.enc.yaml`, including the Doppl
 | `CRIBL_STREAM_MASTER_URL` | Cribl Cloud Stream worker URL (`tls://TOKEN@org:4200?group=...`) |
 | `CRIBL_STREAM_PASSWORD` | Cribl Stream standalone admin password |
 | `SPLUNK_HEC_TOKEN` | Splunk HEC token (standalone edge to Splunk) |
+| `SPLUNK_HEC_URL` | Splunk HEC endpoint URL (e.g. `https://10.0.1.200:8088/services/collector`) |
 | `CLAUDE_API_KEY` | AI container API key |
 | `GEMINI_API_KEY` | AI container API key |
 
@@ -76,7 +77,7 @@ The managed worker connects to your Cribl Cloud Stream worker group. Configure t
 
 ## OTLP Telemetry
 
-The OTEL Collector forwards telemetry to `cribl-edge-managed:9420`. This requires an OTLP source configured in the Cribl Cloud fleet UI for the managed edge fleet. Without it, data will be dropped.
+The OTEL Collector forwards telemetry via gRPC to `cribl-edge-managed:4317`. The managed edge fleet has an `open_telemetry` source configured with `host: 0.0.0.0`, `port: 4317`, `protocol: grpc` in Cribl Cloud.
 
 ## Verify
 
@@ -96,8 +97,8 @@ open http://localhost:30910
 # Check Cribl Stream standalone UI
 open http://localhost:30900
 
-# Verify OTEL can reach managed edge
-kubectl exec -n monitoring deploy/otel-collector -- curl -sf http://cribl-edge-managed:9420/api/v1/health
+# Verify OTEL can reach managed edge OTLP source
+kubectl exec -n monitoring deploy/otel-collector -- curl -sf http://cribl-edge-managed:4317
 ```
 
 ## Update

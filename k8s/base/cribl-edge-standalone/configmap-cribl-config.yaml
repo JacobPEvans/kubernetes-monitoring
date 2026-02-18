@@ -99,9 +99,9 @@ data:
     OVERRIDE
     echo "Pack input override written with path=$CLAUDE_HOME/.claude/projects/"
 
-    # Phase 5: Configure Splunk HEC output via API (token from env var)
-    if [ -z "$SPLUNK_HEC_TOKEN" ]; then
-      echo "WARNING: SPLUNK_HEC_TOKEN not set, skipping output config"
+    # Phase 5: Configure Splunk HEC output via API (token + URL from env vars)
+    if [ -z "$SPLUNK_HEC_TOKEN" ] || [ -z "$SPLUNK_HEC_URL" ]; then
+      echo "WARNING: SPLUNK_HEC_TOKEN or SPLUNK_HEC_URL not set, skipping output config"
       exit 0
     fi
 
