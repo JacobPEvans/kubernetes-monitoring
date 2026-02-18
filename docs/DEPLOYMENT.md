@@ -4,7 +4,7 @@
 
 - OrbStack with Kubernetes enabled
 - `kubectl` configured with `orbstack` context
-- `doppler` CLI configured (for Cribl secrets)
+- `doppler` CLI authenticated (`doppler login`) for Cribl secrets
 - `sops` and `age` installed (for secret management)
 - `kustomize` (bundled with kubectl 1.14+)
 
@@ -40,7 +40,7 @@ sops secrets.enc.yaml
 make deploy-doppler
 ```
 
-This reads Doppler project/config from SOPS, fetches Cribl secrets via Doppler, and deploys the full stack.
+This reads Doppler project/config from SOPS, fetches Cribl secrets (including `CRIBL_DIST_MASTER_URL`) via Doppler, and deploys the full stack.
 
 ### Deploy Without Doppler
 

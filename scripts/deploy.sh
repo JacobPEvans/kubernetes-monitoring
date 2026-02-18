@@ -30,8 +30,8 @@ if [ -n "$CRIBL_MASTER" ]; then
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
   echo "  Created: cribl-cloud-config"
 else
-  echo "  SKIPPED: cribl-cloud-config (CRIBL_DIST_MASTER_URL not set)"
-  echo "           Set CRIBL_DIST_MASTER_URL or use: make deploy-doppler"
+  echo "  SKIPPED: cribl-cloud-config (no Cribl master URL configured)"
+  echo "           Set CRIBL_DIST_MASTER_URL or CRIBL_CLOUD_MASTER_URL, or use: make deploy-doppler"
 fi
 
 # Cribl Stream admin password

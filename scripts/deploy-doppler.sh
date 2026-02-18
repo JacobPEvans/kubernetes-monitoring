@@ -7,8 +7,7 @@ set -euo pipefail
 
 if [ -z "${DOPPLER_PROJECT:-}" ] || [ -z "${DOPPLER_CONFIG:-}" ]; then
   echo "ERROR: DOPPLER_PROJECT and DOPPLER_CONFIG must be set"
-  echo "These are stored in secrets.enc.yaml (encrypted with SOPS)"
-  echo "Run: make deploy-doppler"
+  echo "Add them to secrets.enc.yaml: sops secrets.enc.yaml"
   exit 1
 fi
 

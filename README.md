@@ -22,7 +22,7 @@ cd ~/git/kubernetes-monitoring/main
 cp secrets.enc.yaml.example secrets.enc.yaml
 sops secrets.enc.yaml
 
-# 3. Deploy (Cribl secrets via Doppler, config in SOPS)
+# 3. Deploy (Doppler exports CRIBL_DIST_MASTER_URL, project/config in SOPS)
 make deploy-doppler
 
 # 4. Verify
