@@ -7,7 +7,7 @@ Kubernetes monitoring manifests for local OrbStack cluster.
 - **PLACEHOLDER_HOME_DIR**: Base manifests use literal `PLACEHOLDER_HOME_DIR` for hostPath volumes. NEVER replace with real paths in `k8s/base/`.
 - **Overlays are gitignored**: `k8s/overlays/local/` is generated at deploy time by `scripts/generate-overlay.sh` and must not be committed.
 - **Deploy workflow**: `make deploy` generates overlay + creates secrets + applies kustomize.
-- **Secrets**: Use SOPS + age encryption. Never commit plaintext secrets. See `secrets.enc.yaml.example`.
+- **Secrets**: All secrets in SOPS (`secrets.enc.yaml`). Doppler project/config stored in SOPS, never hardcoded. Never commit plaintext secrets.
 - **Image tags**: Pin to specific versions, not `:latest`.
 - **Worktrees**: Use `/init-worktree` before starting work. Work in feature branches.
 

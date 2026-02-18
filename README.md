@@ -18,12 +18,12 @@ Kubernetes monitoring stack for local OrbStack cluster. Collects, processes, and
 # 1. Clone and enter repo
 cd ~/git/kubernetes-monitoring/main
 
-# 2. Set up secrets
+# 2. Set up secrets (one-time)
 cp secrets.enc.yaml.example secrets.enc.yaml
-sops secrets.enc.yaml  # Edit with real values
+sops secrets.enc.yaml
 
-# 3. Deploy
-sops exec-env secrets.enc.yaml 'make deploy'
+# 3. Deploy (Doppler exports CRIBL_DIST_MASTER_URL, project/config in SOPS)
+make deploy-doppler
 
 # 4. Verify
 make status
@@ -94,6 +94,7 @@ kubernetes-monitoring/
 | `make help` | Show all targets |
 | `make validate` | Validate kustomize builds cleanly |
 | `make deploy` | Full deploy (generate overlay + secrets + apply) |
+| `make deploy-doppler` | Deploy with Cribl secrets from Doppler |
 | `make status` | Show pod status |
 | `make logs` | Tail all pod logs |
 | `make build-images` | Build Docker images |

@@ -4,30 +4,47 @@
 
 - OrbStack with Kubernetes enabled
 - `kubectl` configured with `orbstack` context
+- `doppler` CLI authenticated (`doppler login`) for Cribl secrets
 - `sops` and `age` installed (for secret management)
 - `kustomize` (bundled with kubectl 1.14+)
 
-## SOPS Setup
+## Secret Management
 
-1. Ensure your age key is available:
+All secrets are stored in SOPS-encrypted `secrets.enc.yaml`, including the Doppler project/config used to fetch Cribl secrets at deploy time.
 
-   ```bash
-   # Key should be at ~/.config/sops/age/keys.txt
-   ls ~/.config/sops/age/keys.txt
-   ```
+| Secret | Purpose |
+|--------|---------|
+| `DOPPLER_PROJECT` | Doppler project name (for Cribl secrets) |
+| `DOPPLER_CONFIG` | Doppler config name (for Cribl secrets) |
+| `CRIBL_CLOUD_MASTER_URL` | Alternative: direct Cribl URL (if not using Doppler) |
+| `CRIBL_STREAM_PASSWORD` | Cribl Stream admin password |
+| `CLAUDE_API_KEY` | AI container API key |
+| `GEMINI_API_KEY` | AI container API key |
 
-2. Create and encrypt secrets:
+### SOPS Setup (one-time)
 
-   ```bash
-   cp secrets.enc.yaml.example secrets.enc.yaml
-   sops secrets.enc.yaml
-   ```
+```bash
+# Ensure your age key exists
+ls ~/.config/sops/age/keys.txt
 
-3. Fill in real values for all secrets.
+# Create and encrypt secrets
+cp secrets.enc.yaml.example secrets.enc.yaml
+sops secrets.enc.yaml
+```
 
 ## Deploy
 
-### Quick Deploy
+### Quick Deploy (Doppler + SOPS)
+
+```bash
+make deploy-doppler
+```
+
+This reads Doppler project/config from SOPS, fetches Cribl secrets (including `CRIBL_DIST_MASTER_URL`) via Doppler, and deploys the full stack.
+
+### Deploy Without Doppler
+
+If Cribl secrets are set directly in `secrets.enc.yaml` (via `CRIBL_CLOUD_MASTER_URL`):
 
 ```bash
 sops exec-env secrets.enc.yaml 'make deploy'
@@ -42,8 +59,8 @@ make generate-overlay
 # 2. Validate kustomize output
 make validate
 
-# 3. Deploy with secrets injected
-sops exec-env secrets.enc.yaml './scripts/deploy.sh'
+# 3. Deploy with secrets
+make deploy-doppler
 ```
 
 ## Verify
@@ -70,8 +87,7 @@ open http://localhost:30900
 After modifying base manifests:
 
 ```bash
-# Re-deploy
-sops exec-env secrets.enc.yaml 'make deploy'
+make deploy-doppler
 ```
 
 ## Tear Down
