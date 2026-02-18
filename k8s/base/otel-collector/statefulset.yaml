@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: otel-collector
   namespace: monitoring
   labels:
     app: otel-collector
 spec:
+  serviceName: otel-collector
   replicas: 1
   selector:
     matchLabels:

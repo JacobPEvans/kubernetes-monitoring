@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: cribl-edge-managed
   namespace: monitoring
   labels:
     app: cribl-edge-managed
 spec:
+  serviceName: cribl-edge-managed
   replicas: 1
   selector:
     matchLabels:
