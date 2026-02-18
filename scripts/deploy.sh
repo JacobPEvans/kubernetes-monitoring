@@ -87,7 +87,8 @@ for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream
 done
 # Delete non-headless ClusterIP services (StatefulSets require headless)
 for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-managed cribl-stream-standalone; do
-  if kubectl --context "$CONTEXT" -n "$NAMESPACE" get service "$name" -o jsonpath='{.spec.clusterIP}' 2>/dev/null | grep -qv None; then
+  cluster_ip=$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get service "$name" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
+  if [[ -n "$cluster_ip" && "$cluster_ip" != "None" ]]; then
     kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service "$name" 2>/dev/null
     echo "  Deleted: service/$name (non-headless, will recreate)"
   fi
@@ -105,11 +106,17 @@ echo ""
 
 # Step 5: Wait for rollouts
 echo "--- Step 5: Waiting for rollouts ---"
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/otel-collector --timeout=120s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-edge-managed --timeout=120s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-edge-standalone --timeout=120s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-stream-standalone --timeout=180s || true
-kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status statefulset/cribl-stream-managed --timeout=120s || true
+declare -A timeouts=(
+  [otel-collector]=120s
+  [cribl-edge-managed]=120s
+  [cribl-edge-standalone]=120s
+  [cribl-stream-standalone]=180s
+  [cribl-stream-managed]=120s
+)
+
+for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone cribl-stream-managed; do
+  kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status "statefulset/$name" --timeout="${timeouts[$name]}" || true
+done
 echo ""
 
 # Step 6: Print endpoints
