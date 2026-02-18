@@ -11,7 +11,7 @@ data:
         disabled: false
         sendToRoutes: false
         mode: manual
-        path: /home/claude/.claude/projects/
+        path: /home/jevans/.claude/projects/
         interval: 10
         recurse: true
         filenames:
