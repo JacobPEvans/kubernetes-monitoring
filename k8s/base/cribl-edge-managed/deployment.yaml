@@ -30,7 +30,7 @@ spec:
             - name: CRIBL_DIST_MODE
               value: "managed-edge"
             - name: CLAUDE_USER
-              value: "jevans"
+              value: "claude"
             - name: CRIBL_DIST_MASTER_URL
               valueFrom:
                 secretKeyRef:
@@ -38,7 +38,7 @@ spec:
                   key: master-url
           volumeMounts:
             - name: claude-logs
-              mountPath: /home/jevans/.claude
+              mountPath: /home/claude/.claude
               readOnly: true
             - name: ollama-logs
               mountPath: /var/log/ollama
