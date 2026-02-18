@@ -18,18 +18,18 @@ Kubernetes monitoring manifests for local OrbStack cluster.
 After modifying any manifest, ConfigMap, or deployment script:
 
 1. `make deploy-doppler` (or `kubectl apply -k k8s/overlays/local/` if SOPS key unavailable)
-2. Wait for rollouts: `kubectl --context orbstack -n monitoring rollout status deployment/<name>`
+2. Wait for rollouts: `kubectl --context orbstack -n monitoring rollout status statefulset/<name>`
 3. Verify pods are Running and Ready: `make status`
-4. Check logs for errors: `kubectl --context orbstack -n monitoring logs deploy/<name> --tail=20`
+4. Check logs for errors: `kubectl --context orbstack -n monitoring logs statefulset/<name> --tail=20`
 5. If health probes fail, check startup logs for the specific pod (not just `deploy/`)
 
 Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 ## Architecture
 
-Five deployments in the monitoring namespace:
+Five StatefulSets in the monitoring namespace:
 
-| Deployment | Role | UI |
+| StatefulSet | Role | UI |
 |------------|------|-----|
 | `otel-collector` | OTLP receiver, forwards to managed edge | None |
 | `cribl-edge-managed` | Cloud-managed edge, receives OTLP on :9420 | None |
