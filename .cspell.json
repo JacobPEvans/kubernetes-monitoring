@@ -1,6 +1,8 @@
 {
   "version": "0.2",
   "words": [
+    "backpressure",
+    "commitlint",
     "configmap",
     "crbl",
     "cribl",
@@ -10,13 +12,21 @@
     "hostpath",
     "kustomization",
     "kustomize",
+    "lastmodified",
     "ollama",
     "orbstack",
     "otlp",
+    "otlphttp",
     "rollouts",
+    "sourcetype",
     "statefulset",
     "statefulsets",
+    "streamtags",
     "worktree",
     "worktrees"
+  ],
+  "ignorePaths": [
+    "secrets.enc.yaml",
+    ".sops.yaml"
   ]
 }
