@@ -31,7 +31,7 @@ if [ -n "$CRIBL_MASTER" ]; then
   echo "  Created: cribl-cloud-config"
 else
   echo "  SKIPPED: cribl-cloud-config (CRIBL_DIST_MASTER_URL not set)"
-  echo "           Run: make deploy-doppler"
+  echo "           Set CRIBL_DIST_MASTER_URL or use: make deploy-doppler"
 fi
 
 # Cribl Stream admin password

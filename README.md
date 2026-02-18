@@ -18,10 +18,14 @@ Kubernetes monitoring stack for local OrbStack cluster. Collects, processes, and
 # 1. Clone and enter repo
 cd ~/git/kubernetes-monitoring/main
 
-# 2. Deploy (Cribl secrets from Doppler)
+# 2. Set up secrets (one-time)
+cp secrets.enc.yaml.example secrets.enc.yaml
+sops secrets.enc.yaml
+
+# 3. Deploy (Cribl secrets via Doppler, config in SOPS)
 make deploy-doppler
 
-# 3. Verify
+# 4. Verify
 make status
 ```
 

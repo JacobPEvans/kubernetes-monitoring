@@ -15,8 +15,8 @@ generate-overlay: ## Generate local overlay with real volume paths
 deploy: ## Full deploy: generate overlay + create secrets + apply
 	./scripts/deploy.sh
 
-deploy-doppler: ## Deploy with secrets from Doppler (iac-conf-mgmt/prd)
-	doppler run --project iac-conf-mgmt --config prd -- ./scripts/deploy.sh
+deploy-doppler: ## Deploy with Cribl secrets from Doppler (project/config in SOPS)
+	sops exec-env secrets.enc.yaml './scripts/deploy-doppler.sh'
 
 status: ## Show monitoring namespace status
 	kubectl --context $(CONTEXT) get all -n $(NAMESPACE)

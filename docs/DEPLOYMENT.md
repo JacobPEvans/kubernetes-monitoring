@@ -5,37 +5,49 @@
 - OrbStack with Kubernetes enabled
 - `kubectl` configured with `orbstack` context
 - `doppler` CLI configured (for Cribl secrets)
-- `sops` and `age` installed (for AI API keys, optional)
+- `sops` and `age` installed (for secret management)
 - `kustomize` (bundled with kubectl 1.14+)
 
-## Secret Sources
+## Secret Management
 
-| Secret | Source | Doppler Project/Config |
-|--------|--------|------------------------|
-| `CRIBL_DIST_MASTER_URL` | Doppler | `iac-conf-mgmt/prd` |
-| `CRIBL_TOKEN` | Doppler | `iac-conf-mgmt/prd` |
-| `CLAUDE_API_KEY` | SOPS or manual | N/A |
-| `GEMINI_API_KEY` | SOPS or manual | N/A |
+All secrets are stored in SOPS-encrypted `secrets.enc.yaml`, including the Doppler project/config used to fetch Cribl secrets at deploy time.
+
+| Secret | Purpose |
+|--------|---------|
+| `DOPPLER_PROJECT` | Doppler project name (for Cribl secrets) |
+| `DOPPLER_CONFIG` | Doppler config name (for Cribl secrets) |
+| `CRIBL_CLOUD_MASTER_URL` | Alternative: direct Cribl URL (if not using Doppler) |
+| `CRIBL_STREAM_PASSWORD` | Cribl Stream admin password |
+| `CLAUDE_API_KEY` | AI container API key |
+| `GEMINI_API_KEY` | AI container API key |
+
+### SOPS Setup (one-time)
+
+```bash
+# Ensure your age key exists
+ls ~/.config/sops/age/keys.txt
+
+# Create and encrypt secrets
+cp secrets.enc.yaml.example secrets.enc.yaml
+sops secrets.enc.yaml
+```
 
 ## Deploy
 
-### Quick Deploy (Doppler)
+### Quick Deploy (Doppler + SOPS)
 
 ```bash
 make deploy-doppler
 ```
 
-This runs `doppler run --project iac-conf-mgmt --config prd -- ./scripts/deploy.sh`, injecting Cribl secrets automatically.
+This reads Doppler project/config from SOPS, fetches Cribl secrets via Doppler, and deploys the full stack.
 
-### With SOPS (for AI keys)
+### Deploy Without Doppler
+
+If Cribl secrets are set directly in `secrets.enc.yaml` (via `CRIBL_CLOUD_MASTER_URL`):
 
 ```bash
-# Set up SOPS secrets (one-time)
-cp secrets.enc.yaml.example secrets.enc.yaml
-sops secrets.enc.yaml
-
-# Deploy with both Doppler + SOPS
-doppler run --project iac-conf-mgmt --config prd -- sops exec-env secrets.enc.yaml './scripts/deploy.sh'
+sops exec-env secrets.enc.yaml 'make deploy'
 ```
 
 ### Step-by-Step
@@ -47,7 +59,7 @@ make generate-overlay
 # 2. Validate kustomize output
 make validate
 
-# 3. Deploy with Doppler secrets
+# 3. Deploy with secrets
 make deploy-doppler
 ```
 
