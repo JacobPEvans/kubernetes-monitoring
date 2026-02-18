@@ -50,7 +50,7 @@ else
 fi
 
 # Splunk HEC config (standalone edge)
-# Derive HEC URL from SPLUNK_NETWORK terraform output (JSON array, e.g. '["10.0.1.200"]')
+# Derive HEC URL from SPLUNK_NETWORK terraform output (JSON array, e.g. '["192.168.0.200"]')
 SPLUNK_HEC_URL=""
 if [ -n "${SPLUNK_NETWORK:-}" ]; then
   SPLUNK_IP=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])[0])" "$SPLUNK_NETWORK" 2>/dev/null || true)

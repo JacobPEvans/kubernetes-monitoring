@@ -20,7 +20,7 @@ All secrets are stored in SOPS-encrypted `secrets.enc.yaml`, including the Doppl
 | `CRIBL_STREAM_MASTER_URL` | Cribl Cloud Stream worker URL (`tls://TOKEN@org:4200?group=...`) |
 | `CRIBL_STREAM_PASSWORD` | Cribl Stream standalone admin password |
 | `SPLUNK_HEC_TOKEN` | Splunk HEC token (standalone edge to Splunk) |
-| `SPLUNK_NETWORK` | Splunk IP(s) from terraform output (JSON array, e.g. `["10.0.1.200"]`). HEC URL is derived automatically at deploy time. |
+| `SPLUNK_NETWORK` | Splunk IP(s) from terraform output (JSON array, e.g. `["192.168.0.200"]`). HEC URL is derived automatically at deploy time. |
 | `CLAUDE_API_KEY` | AI container API key |
 | `GEMINI_API_KEY` | AI container API key |
 
