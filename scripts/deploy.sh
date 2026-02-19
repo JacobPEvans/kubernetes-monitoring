@@ -88,13 +88,13 @@ echo ""
 # Delete non-headless services (clusterIP cannot be changed in-place to None)
 # Must run before apply to free NodePort 30900 for cribl-stream-standalone-ui
 echo "--- Step 3: Cleaning up old resources ---"
-for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream cribl-stream-standalone cribl-stream-managed; do
+for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream cribl-stream-standalone; do
   if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment "$name" 2>/dev/null; then
     echo "  Deleted: deployment/$name"
   fi
 done
 # Delete non-headless ClusterIP services (StatefulSets require headless)
-for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-managed cribl-stream-standalone; do
+for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do
   cluster_ip=$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get service "$name" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
   if [[ -n "$cluster_ip" && "$cluster_ip" != "None" ]]; then
     kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service "$name" 2>/dev/null
@@ -119,10 +119,9 @@ declare -A timeouts=(
   [cribl-edge-managed]=120s
   [cribl-edge-standalone]=120s
   [cribl-stream-standalone]=180s
-  [cribl-stream-managed]=120s
 )
 
-for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone cribl-stream-managed; do
+for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do
   kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status "statefulset/$name" --timeout="${timeouts[$name]}" || true
 done
 echo ""
@@ -135,8 +134,6 @@ echo "  OTEL gRPC:                   localhost:30317"
 echo "  OTEL HTTP:                   localhost:30318"
 echo "  Cribl Stream Standalone UI:  http://localhost:30900  (admin / CRIBL_STREAM_PASSWORD)"
 echo "  Cribl Edge Standalone UI:    http://localhost:30910"
-echo ""
-echo "Note: cribl-stream-managed has no UI (cloud-managed worker)."
 echo ""
 echo "Verify:"
 echo "  kubectl --context $CONTEXT get all -n $NAMESPACE"

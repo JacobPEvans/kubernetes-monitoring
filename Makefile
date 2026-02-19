@@ -1,4 +1,4 @@
-.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini clean
+.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-smoke test-pipeline test-forwarding test-setup clean
 
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
@@ -32,10 +32,26 @@ build-images: ## Build Claude Code and Gemini CLI Docker images
 	docker build -t kubernetes-monitoring/gemini-cli:latest docker/gemini-cli/
 
 run-claude: ## Create a Claude Code ephemeral job
-	kubectl --context $(CONTEXT) apply -f k8s/base/ai-jobs/claude-code-job.yaml
+	sed "s|PLACEHOLDER_HOME_DIR|$$HOME|g" k8s/base/ai-jobs/claude-code-job.yaml | kubectl --context $(CONTEXT) apply -f -
 
 run-gemini: ## Create a Gemini CLI ephemeral job
-	kubectl --context $(CONTEXT) apply -f k8s/base/ai-jobs/gemini-cli-job.yaml
+	sed "s|PLACEHOLDER_HOME_DIR|$$HOME|g" k8s/base/ai-jobs/gemini-cli-job.yaml | kubectl --context $(CONTEXT) apply -f -
+
+test: ## Run all pipeline tests (requires deployed stack)
+	pytest tests/ -v
+
+test-smoke: ## Run smoke tests only (pod health + services)
+	pytest tests/test_smoke.py -v
+
+test-pipeline: ## Run OTLP pipeline tests (sends test traces)
+	pytest tests/test_pipeline.py -v
+
+test-forwarding: ## Run forwarding tests (collector to Cribl Edge)
+	pytest tests/test_forwarding.py -v
+
+test-setup: ## Install test dependencies in virtual environment
+	python3 -m venv .venv
+	.venv/bin/pip install -r tests/requirements.txt
 
 clean: ## Delete monitoring namespace (destructive!)
 	kubectl --context $(CONTEXT) delete namespace $(NAMESPACE) --ignore-not-found

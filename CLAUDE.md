@@ -27,7 +27,7 @@ Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 ## Architecture
 
-Five StatefulSets in the monitoring namespace:
+Four StatefulSets in the monitoring namespace:
 
 | StatefulSet | Role | UI |
 |------------|------|-----|
@@ -35,7 +35,6 @@ Five StatefulSets in the monitoring namespace:
 | `cribl-edge-managed` | Cloud-managed edge, receives OTLP on :9420 | None |
 | `cribl-edge-standalone` | Local edge with pack, Splunk HEC output | :30910 |
 | `cribl-stream-standalone` | Local Stream leader with UI | :30900 |
-| `cribl-stream-managed` | Cloud-managed Stream worker | None |
 
 Directory layout:
 
@@ -60,4 +59,7 @@ make validate          # Validate kustomize builds + schemas
 make validate-schemas  # Schema validation only
 make deploy            # Full deploy to OrbStack
 make status            # Check pod status
+make test-smoke        # Run smoke tests (cluster connectivity)
+make test-pipeline     # Run pipeline tests (OTLP flow)
+make test-forwarding   # Run forwarding tests (Cribl routing)
 ```

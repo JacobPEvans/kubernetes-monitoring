@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-RUN npm install -g @anthropic-ai/gemini-cli || npm install -g @anthropic-ai/claude-code
+RUN npm install -g @google/gemini-cli
 
 RUN mkdir -p /workspace /logs
 

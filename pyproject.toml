@@ -1,0 +1,5 @@
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
+extraPaths = ["tests"]

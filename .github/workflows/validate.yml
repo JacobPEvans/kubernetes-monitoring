@@ -2,10 +2,10 @@ name: Validate
 
 on:
   push:
-    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml']
+    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', 'docker/**', 'tests/**']
   pull_request:
     branches: [main]
-    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml']
+    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', 'docker/**', 'tests/**']
 
 permissions:
   contents: read
@@ -40,3 +40,18 @@ jobs:
       - name: Install kubeconform
         uses: bmuschko/setup-kubeconform@v1
       - uses: pre-commit/action@v3.0.1
+
+  test-deps:
+    name: Verify test dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+      - name: Verify imports
+        run: python -c "import opentelemetry; import pytest; print('OK')"

@@ -41,7 +41,7 @@ ls -la ~/Library/Logs/Ollama/
 ls -la ~/logs/
 
 # Check volume mounts in pod
-kubectl -n monitoring exec deploy/cribl-edge-managed -- ls -la /var/log/claude/
+kubectl -n monitoring exec statefulset/cribl-edge-managed -- ls -la /var/log/claude/
 ```
 
 If directories don't exist on the host, create them:
@@ -64,10 +64,10 @@ sops exec-env secrets.enc.yaml './scripts/deploy.sh'
 
 ```bash
 # Check OTEL health
-kubectl -n monitoring exec deploy/otel-collector -- curl -s http://localhost:13133/
+kubectl -n monitoring exec statefulset/otel-collector -- curl -s http://localhost:13133/
 
 # Check OTEL logs for errors
-kubectl -n monitoring logs deploy/otel-collector
+kubectl -n monitoring logs statefulset/otel-collector
 
 # Test OTLP endpoint from host
 curl -X POST http://localhost:30318/v1/traces \
@@ -79,13 +79,13 @@ curl -X POST http://localhost:30318/v1/traces \
 
 ```bash
 # Check init container logs
-kubectl -n monitoring logs deploy/cribl-edge-managed -c install-cribl-pack
+kubectl -n monitoring logs statefulset/cribl-edge-managed -c install-cribl-pack
 
 # Verify pack file exists
 ls -la packs/cc-edge-claude-code.crbl
 
 # Check pack was copied
-kubectl -n monitoring exec deploy/cribl-edge-managed -- ls -la /opt/cribl/data/packs/
+kubectl -n monitoring exec statefulset/cribl-edge-managed -- ls -la /opt/cribl/data/packs/
 ```
 
 ## Port Conflicts
