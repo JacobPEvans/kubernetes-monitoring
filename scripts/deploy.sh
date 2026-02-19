@@ -20,13 +20,11 @@ echo ""
 # Step 2: Create secrets
 echo "--- Step 2: Creating secrets ---"
 
-# Cribl Cloud config (edge + stream master URLs)
+# Cribl Cloud config (edge master URL)
 # Supports: CRIBL_DIST_MASTER_URL (Doppler) or CRIBL_CLOUD_MASTER_URL (SOPS)
 CRIBL_EDGE_MASTER="${CRIBL_DIST_MASTER_URL:-${CRIBL_CLOUD_MASTER_URL:-}}"
-CRIBL_STREAM_MASTER="${CRIBL_STREAM_MASTER_URL:-}"
 CLOUD_ARGS=()
 [ -n "$CRIBL_EDGE_MASTER" ] && CLOUD_ARGS+=(--from-literal=master-url="$CRIBL_EDGE_MASTER")
-[ -n "$CRIBL_STREAM_MASTER" ] && CLOUD_ARGS+=(--from-literal=stream-master-url="$CRIBL_STREAM_MASTER")
 if [ ${#CLOUD_ARGS[@]} -gt 0 ]; then
   kubectl --context "$CONTEXT" create secret generic cribl-cloud-config \
     --namespace "$NAMESPACE" \

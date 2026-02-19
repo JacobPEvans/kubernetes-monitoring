@@ -108,9 +108,12 @@ repos:
       - id: no-real-ips
         name: Check for real IP addresses
         entry: >-
-          bash -c 'if grep -rE "10\.[0-9]+\.[0-9]+\.[0-9]+" --include="*.yaml"
-          --include="*.sh" k8s/ scripts/ docker/ 2>/dev/null;
-          then echo "FAIL Real IP addresses found in committed files"; exit 1; fi'
+          bash -c 'matches=$(grep -rEn "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"
+          --include="*.yaml" --include="*.sh" k8s/ scripts/ docker/ 2>/dev/null
+          | grep -vE "(192\.168\.|127\.|0\.0\.0\.0)" || true);
+          if [ -n "$matches" ]; then echo "$matches";
+          echo "FAIL Non-allowed IP addresses found (only 192.168.x.x permitted)";
+          exit 1; fi'
         language: system
         pass_filenames: false
         files: '\.(yaml|sh)$'

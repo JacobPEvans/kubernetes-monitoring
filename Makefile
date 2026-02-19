@@ -38,16 +38,16 @@ run-gemini: ## Create a Gemini CLI ephemeral job
 	sed "s|PLACEHOLDER_HOME_DIR|$$HOME|g" k8s/base/ai-jobs/gemini-cli-job.yaml | kubectl --context $(CONTEXT) apply -f -
 
 test: ## Run all pipeline tests (requires deployed stack)
-	pytest tests/ -v
+	.venv/bin/pytest tests/ -v
 
 test-smoke: ## Run smoke tests only (pod health + services)
-	pytest tests/test_smoke.py -v
+	.venv/bin/pytest tests/test_smoke.py -v
 
 test-pipeline: ## Run OTLP pipeline tests (sends test traces)
-	pytest tests/test_pipeline.py -v
+	.venv/bin/pytest tests/test_pipeline.py -v
 
 test-forwarding: ## Run forwarding tests (collector to Cribl Edge)
-	pytest tests/test_forwarding.py -v
+	.venv/bin/pytest tests/test_forwarding.py -v
 
 test-setup: ## Install test dependencies in virtual environment
 	python3 -m venv .venv
