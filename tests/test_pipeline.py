@@ -32,6 +32,7 @@ class TestOtlpGrpcIngestion:
     def test_send_trace_grpc(self):
         """Send a trace via gRPC NodePort and verify the collector accepted it."""
         span = _create_test_span()
+        # insecure=True: TLS not needed for local OrbStack NodePort testing
         exporter = GrpcExporter(endpoint=OTEL_GRPC_ENDPOINT, insecure=True)
         result = exporter.export([span])
         exporter.shutdown()

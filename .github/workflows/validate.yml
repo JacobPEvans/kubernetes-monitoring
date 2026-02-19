@@ -54,4 +54,4 @@ jobs:
       - name: Install test dependencies
         run: pip install -r tests/requirements.txt
       - name: Verify imports
-        run: python -c "import opentelemetry; import pytest; print('OK')"
+        run: python -c "from opentelemetry.sdk.trace import TracerProvider; from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter; from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter; import pytest; print('OK')"

@@ -91,8 +91,8 @@ open http://localhost:30910
 # Check Cribl Stream standalone UI
 open http://localhost:30900
 
-# Verify OTEL can reach managed edge OTLP source
-kubectl exec -n monitoring statefulset/otel-collector -- curl -sf http://cribl-edge-managed:4317
+# Verify OTEL can reach managed edge OTLP source (gRPC health check)
+kubectl exec -n monitoring statefulset/otel-collector -- curl -sf http://cribl-edge-managed:9420/api/v1/health
 ```
 
 ## Update

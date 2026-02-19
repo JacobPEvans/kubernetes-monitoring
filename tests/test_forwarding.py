@@ -16,6 +16,7 @@ from conftest import OTEL_GRPC_ENDPOINT, kubectl
 
 
 def _send_trace(test_id: str) -> None:
+    # insecure=True: TLS not needed for local OrbStack NodePort testing
     exporter = OTLPSpanExporter(endpoint=OTEL_GRPC_ENDPOINT, insecure=True)
     provider = TracerProvider()
     provider.add_span_processor(SimpleSpanProcessor(exporter))

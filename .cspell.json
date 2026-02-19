@@ -26,6 +26,7 @@
     "pycache",
     "pyproject",
     "pytest",
+    "pythonpath",
     "rollouts",
     "sops",
     "sourcetype",

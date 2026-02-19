@@ -1,11 +1,12 @@
 """Shared test fixtures and utilities for OTEL pipeline tests."""
 import json
+import os
 import subprocess
 from typing import Any
 import pytest
 
-CONTEXT = "orbstack"
-NAMESPACE = "monitoring"
+CONTEXT = os.environ.get("KUBE_CONTEXT", "orbstack")
+NAMESPACE = os.environ.get("KUBE_NAMESPACE", "monitoring")
 OTEL_GRPC_ENDPOINT = "localhost:30317"
 OTEL_HTTP_ENDPOINT = "http://localhost:30318"
 STATEFULSETS = [
@@ -21,7 +22,9 @@ def kubectl(*args: str) -> str:
     cmd = ["kubectl", "--context", CONTEXT, "-n", NAMESPACE, *args]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     if result.returncode != 0:
-        raise RuntimeError(f"kubectl {' '.join(args)} failed: {result.stderr}")
+        raise RuntimeError(
+            f"kubectl {' '.join(args)} failed:\nstderr: {result.stderr}\nstdout: {result.stdout}"
+        )
     return result.stdout.strip()
 
 
