@@ -19,6 +19,7 @@ spec:
       containers:
         - name: claude-code
           image: kubernetes-monitoring/claude-code:latest
+          imagePullPolicy: Never
           env:
             - name: CLAUDE_API_KEY
               valueFrom:

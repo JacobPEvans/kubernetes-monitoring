@@ -19,6 +19,7 @@ spec:
       containers:
         - name: gemini-cli
           image: kubernetes-monitoring/gemini-cli:latest
+          imagePullPolicy: Never
           env:
             - name: GEMINI_API_KEY
               valueFrom:

@@ -12,8 +12,6 @@ resources:
   - cribl-edge-managed/
   # Cribl Edge (standalone)
   - cribl-edge-standalone/
-  # Cribl Stream (cloud-managed worker)
-  - cribl-stream-managed/
   # Cribl Stream (standalone leader with UI)
   - cribl-stream-standalone/
   # AI job templates

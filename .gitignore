@@ -19,3 +19,11 @@ docker/*/node_modules/
 .idea/
 .vscode/
 *.code-workspace
+
+# Python test artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Virtual environment
+.venv/

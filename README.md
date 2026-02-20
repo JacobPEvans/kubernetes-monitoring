@@ -9,7 +9,7 @@ Kubernetes monitoring stack for local OrbStack cluster. Collects, processes, and
 | OTEL Collector | Telemetry collection (traces, metrics, logs) | 4317 (gRPC), 4318 (HTTP), 30317/30318 (NodePort) |
 | Cribl Edge (Managed) | Log collection, connected to Cribl Cloud | 9420 (OTEL), 9000 (UI) |
 | Cribl Edge (Standalone) | Local log collection, independent | 9420 (OTEL), 30910 (UI NodePort) |
-| Cribl Stream | Log routing and transformation | 9000 (API), 30900 (UI NodePort) |
+| Cribl Stream (Standalone) | Local log routing and transformation | 9000 (API), 30900 (UI NodePort) |
 | AI Jobs | Ephemeral Claude Code / Gemini CLI containers | N/A |
 
 ## Quick Start
@@ -82,6 +82,7 @@ kubernetes-monitoring/
 ├── scripts/
 │   ├── deploy.sh                # Full deployment script
 │   └── generate-overlay.sh      # Overlay generator
+├── tests/                       # Integration and smoke tests
 ├── packs/                       # Cribl Edge pack files
 ├── docs/                        # Extended documentation
 └── Makefile
@@ -98,6 +99,11 @@ kubernetes-monitoring/
 | `make status` | Show pod status |
 | `make logs` | Tail all pod logs |
 | `make build-images` | Build Docker images |
+| `make test` | Run all integration tests |
+| `make test-smoke` | Run smoke tests (cluster connectivity) |
+| `make test-pipeline` | Run pipeline tests (OTLP flow) |
+| `make test-forwarding` | Run forwarding tests (Cribl routing) |
+| `make test-setup` | Create Python venv and install test deps |
 | `make clean` | Delete monitoring namespace |
 
 ## Documentation
