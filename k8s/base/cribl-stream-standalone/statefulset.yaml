@@ -16,7 +16,7 @@ spec:
       labels:
         app: cribl-stream-standalone
     spec:
-      priorityClassName: monitoring-normal
+      priorityClassName: monitoring-high
       containers:
         - name: cribl-stream
           image: cribl/cribl:latest
@@ -26,6 +26,9 @@ spec:
               protocol: TCP
             - name: inputs
               containerPort: 10080
+              protocol: TCP
+            - name: otlp
+              containerPort: 4317
               protocol: TCP
             - name: leader
               containerPort: 4200
@@ -39,11 +42,34 @@ spec:
                   name: cribl-stream-admin
                   key: password
                   optional: true
+            - name: SPLUNK_HEC_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: splunk-hec-config
+                  key: token
+                  optional: true
+            - name: SPLUNK_HEC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: splunk-hec-config
+                  key: url
+                  optional: true
+            - name: CRIBL_BEFORE_START_CMD_1
+              value: "mkdir -p /opt/cribl/local/cribl/pipelines"
+            - name: CRIBL_BEFORE_START_CMD_2
+              value: 'sed -e "s|__SPLUNK_HEC_URL__|$SPLUNK_HEC_URL|g" -e "s|__SPLUNK_HEC_TOKEN__|$SPLUNK_HEC_TOKEN|g" /var/tmp/cribl-config/outputs.yml > /opt/cribl/local/cribl/outputs.yml'
+            - name: CRIBL_BEFORE_START_CMD_3
+              value: "cp /var/tmp/cribl-config/inputs.yml /opt/cribl/local/cribl/inputs.yml"
+            - name: CRIBL_BEFORE_START_CMD_4
+              value: "cp /var/tmp/cribl-config/pipelines-route.yml /opt/cribl/local/cribl/pipelines/route.yml"
           volumeMounts:
             - name: cribl-data
               mountPath: /opt/cribl/data
             - name: cribl-state
               mountPath: /opt/cribl/state
+            - name: cribl-config
+              mountPath: /var/tmp/cribl-config
+              readOnly: true
           resources:
             requests:
               memory: "1Gi"
@@ -51,15 +77,24 @@ spec:
             limits:
               memory: "2.5Gi"
               cpu: "2"
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "curl -sf http://127.0.0.1:9000/api/v1/health || exit 1"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             exec:
               command:
                 - /bin/sh
                 - -c
                 - "curl -sf http://127.0.0.1:9000/api/v1/health || exit 1"
-            initialDelaySeconds: 90
+            initialDelaySeconds: 30
             periodSeconds: 30
-            failureThreshold: 5
+            failureThreshold: 3
           readinessProbe:
             exec:
               command:
@@ -70,7 +105,16 @@ spec:
             periodSeconds: 10
             failureThreshold: 5
       volumes:
-        - name: cribl-data
-          emptyDir: {}
         - name: cribl-state
           emptyDir: {}
+        - name: cribl-config
+          configMap:
+            name: cribl-stream-standalone-config
+  volumeClaimTemplates:
+    - metadata:
+        name: cribl-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 20Gi

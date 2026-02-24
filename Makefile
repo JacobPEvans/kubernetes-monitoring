@@ -1,4 +1,4 @@
-.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-smoke test-pipeline test-forwarding test-setup clean
+.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-smoke test-pipeline test-forwarding test-setup full-power power-save power-status clean
 
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
@@ -56,6 +56,25 @@ test-forwarding: ## Run forwarding tests (collector to Cribl Edge)
 test-setup: ## Install test dependencies in virtual environment
 	python3 -m venv .venv
 	.venv/bin/pip install -r tests/requirements.txt
+
+power-save: ## Scale all monitoring pods to 0 replicas (battery saver)
+	@echo "Scaling down monitoring stack..."
+	kubectl --context $(CONTEXT) -n $(NAMESPACE) scale statefulset --all --replicas=0
+	@echo "All monitoring pods scaled to 0. Run 'make full-power' to restore."
+
+full-power: ## Scale all monitoring pods to 1 replica (full power)
+	@echo "Scaling up monitoring stack..."
+	kubectl --context $(CONTEXT) -n $(NAMESPACE) scale statefulset --all --replicas=1
+	@echo "Waiting for rollouts..."
+	@for sts in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do \
+		kubectl --context $(CONTEXT) -n $(NAMESPACE) rollout status statefulset/$$sts --timeout=120s 2>/dev/null || true; \
+	done
+	@echo "All monitoring pods restored."
+
+power-status: ## Show monitoring pod replica counts and macOS power source
+	@kubectl --context $(CONTEXT) -n $(NAMESPACE) get statefulsets --no-headers 2>/dev/null | awk '{printf "  %-35s %s\n", $$1, $$2}'
+	@echo ""
+	@pmset -g batt 2>/dev/null | head -1 || true
 
 clean: ## Delete monitoring namespace (destructive!)
 	kubectl --context $(CONTEXT) delete namespace $(NAMESPACE) --ignore-not-found

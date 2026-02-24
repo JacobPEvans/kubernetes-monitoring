@@ -6,9 +6,8 @@ metadata:
 data:
   setup-edge.sh: |
     #!/bin/sh
-    # Configure Cribl Edge: install pack + create Splunk HEC output.
-    # Cribl does NOT expand env vars in YAML config files, so outputs
-    # must be created via API to inject the real SPLUNK_HEC_TOKEN.
+    # Configure Cribl Edge: install pack.
+    # Output and input config handled by CRIBL_BEFORE_START_CMD env vars.
     # Runs as postStart lifecycle hook on every pod start.
     RETRIES=0
     MAX_RETRIES=90
@@ -29,7 +28,7 @@ data:
 
     if [ -z "$AUTH" ]; then
       echo "ERROR: Cribl auth API not ready after ${MAX_RETRIES} retries"
-      exit 0
+      exit 1
     fi
     echo "Auth ready after $RETRIES retries"
 
@@ -60,106 +59,45 @@ data:
         -H 'Content-Type: application/json' \
         -d '{"source":"cc-edge-claude-code.crbl"}' 2>&1)
       echo "Pack install result: $RESULT"
-    fi
 
-    # Phase 4: Write local override for pack inputs with resolved path
-    # The upstream pack is being updated to use ${CLAUDE_HOME} instead of
-    # the broken ${CLAUDE_USER}. This local override resolves the shell
-    # variable $CLAUDE_HOME at boot time, since Cribl does NOT expand
-    # ${VAR} in YAML config files.
-    mkdir -p /opt/cribl/local/cc-edge-claude-code
-    cat > /opt/cribl/local/cc-edge-claude-code/inputs.yml << OVERRIDE
+      # Phase 4: Commit and restart to apply pack installation
+      curl -sf -X POST "http://127.0.0.1:9420/api/v1/version/commit" \
+        -H "Authorization: Bearer $AUTH" \
+        -H 'Content-Type: application/json' \
+        -d '{"message":"Install cc-edge-claude-code pack"}' 2>&1
+      echo "Config committed"
+
+      curl -sf -X POST "http://127.0.0.1:9420/api/v1/system/settings/restart" \
+        -H "Authorization: Bearer $AUTH" 2>&1
+      echo "Worker restart triggered"
+    fi
+  outputs.yml: |
+    outputs:
+      cribl-stream:
+        type: cribl_http
+        url: "http://cribl-stream-standalone:10080"
+        compress: true
+        concurrency: 5
+        maxPayloadSizeKB: 4096
+        onBackpressure: block
+        pqEnabled: true
+        pqMaxSize: "5GB"
+        pqPath: /opt/cribl/data/pq
+      default:
+        type: default
+        defaultId: cribl-stream
+  inputs-override.yml: |
     inputs:
       claude-code-logs:
         disabled: false
         sendToRoutes: true
-        pqEnabled: false
-        streamtags: []
+        type: file
         mode: manual
         interval: 10
+        recurse: true
+        path: "__CLAUDE_HOME__/.claude/projects/"
         filenames:
           - "*.jsonl"
-        filterArchivedFiles: false
-        tailOnly: false
-        idleTimeout: 300
-        checkFileModTime: false
-        forceText: false
-        hashLen: 256
-        staleChannelFlushMs: 10000
-        suppressMissingPathErrors: false
-        deleteFiles: false
-        saltHash: false
-        includeUnidentifiableBinary: false
-        recurse: true
-        type: file
-        path: $CLAUDE_HOME/.claude/projects/
         metadata:
           - name: datatype
             value: "'claude-code'"
-    OVERRIDE
-    echo "Pack input override written with path=$CLAUDE_HOME/.claude/projects/"
-
-    # Phase 5: Configure Splunk HEC output via API (token + URL from env vars)
-    if [ -z "$SPLUNK_HEC_TOKEN" ] || [ -z "$SPLUNK_HEC_URL" ]; then
-      echo "WARNING: SPLUNK_HEC_TOKEN or SPLUNK_HEC_URL not set, skipping output config"
-      exit 0
-    fi
-
-    # Create or update splunk-hec output
-    curl -sf -X PUT "http://127.0.0.1:9420/api/v1/system/outputs/splunk-hec" \
-      -H "Authorization: Bearer $AUTH" \
-      -H 'Content-Type: application/json' \
-      -d "{
-        \"id\": \"splunk-hec\",
-        \"type\": \"splunk_hec\",
-        \"url\": \"$SPLUNK_HEC_URL\",
-        \"token\": \"$SPLUNK_HEC_TOKEN\",
-        \"index\": \"claude\",
-        \"source\": \"cribl-edge\",
-        \"sourcetype\": \"claude:code:session\",
-        \"rejectUnauthorized\": false,
-        \"concurrency\": 5,
-        \"maxPayloadSizeKB\": 4096,
-        \"compress\": true,
-        \"onBackpressure\": \"block\"
-      }" 2>&1 || \
-    curl -sf -X POST "http://127.0.0.1:9420/api/v1/system/outputs" \
-      -H "Authorization: Bearer $AUTH" \
-      -H 'Content-Type: application/json' \
-      -d "{
-        \"id\": \"splunk-hec\",
-        \"type\": \"splunk_hec\",
-        \"url\": \"$SPLUNK_HEC_URL\",
-        \"token\": \"$SPLUNK_HEC_TOKEN\",
-        \"index\": \"claude\",
-        \"source\": \"cribl-edge\",
-        \"sourcetype\": \"claude:code:session\",
-        \"rejectUnauthorized\": false,
-        \"concurrency\": 5,
-        \"maxPayloadSizeKB\": 4096,
-        \"compress\": true,
-        \"onBackpressure\": \"block\"
-      }" 2>&1
-
-    echo "Splunk HEC output configured"
-
-    # Update default output to route to splunk-hec
-    curl -sf -X PATCH "http://127.0.0.1:9420/api/v1/system/outputs/default" \
-      -H "Authorization: Bearer $AUTH" \
-      -H 'Content-Type: application/json' \
-      -d '{"id":"default","type":"default","defaultId":"splunk-hec"}' 2>&1
-
-    echo "Default output set to splunk-hec"
-
-    # Phase 6: Commit and restart to apply all config changes
-    # The commit persists API-created outputs and the local override.
-    # The restart forces the worker to reload with the resolved paths.
-    curl -sf -X POST "http://127.0.0.1:9420/api/v1/version/commit" \
-      -H "Authorization: Bearer $AUTH" \
-      -H 'Content-Type: application/json' \
-      -d '{"message":"Setup edge: pack, inputs override, Splunk output"}' 2>&1
-    echo "Config committed"
-
-    curl -sf -X POST "http://127.0.0.1:9420/api/v1/system/settings/restart" \
-      -H "Authorization: Bearer $AUTH" 2>&1
-    echo "Worker restart triggered"

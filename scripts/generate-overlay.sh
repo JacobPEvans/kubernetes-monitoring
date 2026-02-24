@@ -52,6 +52,14 @@ spec:
           hostPath:
             path: ${HOME_DIR}/logs/ai-jobs
             type: DirectoryOrCreate
+        - name: pod-logs
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+        - name: docker-containers
+          hostPath:
+            path: /var/lib/docker/containers
+            type: Directory
 EOF
 
 # Cribl Edge Managed volume patch
@@ -117,6 +125,9 @@ spec:
           hostPath:
             path: ${HOME_DIR}/git/kubernetes-monitoring/main/packs
             type: DirectoryOrCreate
+        - name: cribl-config-templates
+          configMap:
+            name: cribl-edge-standalone-config
 EOF
 
 echo "Overlay generated successfully."

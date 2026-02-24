@@ -52,7 +52,10 @@ fi
 SPLUNK_HEC_URL=""
 if [ -n "${SPLUNK_NETWORK:-}" ]; then
   SPLUNK_IP=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])[0])" "$SPLUNK_NETWORK" 2>/dev/null || true)
-  [ -n "$SPLUNK_IP" ] && SPLUNK_HEC_URL="https://${SPLUNK_IP}:8088/services/collector"
+  # Use host.orb.internal so K8s pods can reach Splunk via OrbStack's host proxy.
+  # Direct IP (${SPLUNK_IP}:8088) is unreachable from pods due to OrbStack NAT;
+  # OrbStack transparently proxies LAN Splunk ports on host.orb.internal.
+  [ -n "$SPLUNK_IP" ] && SPLUNK_HEC_URL="https://host.orb.internal:8088/services/collector"
 fi
 if [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
   HEC_ARGS=(--from-literal=token="$SPLUNK_HEC_TOKEN")
@@ -86,6 +89,21 @@ echo ""
 # Delete non-headless services (clusterIP cannot be changed in-place to None)
 # Must run before apply to free NodePort 30900 for cribl-stream-standalone-ui
 echo "--- Step 3: Cleaning up old resources ---"
+# Delete ghost cribl-stream-managed (no manifest, crash-looping)
+for resource_type in statefulset deployment; do
+  if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete "$resource_type" cribl-stream-managed 2>/dev/null; then
+    echo "  Deleted: $resource_type/cribl-stream-managed"
+  fi
+done
+if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream-managed 2>/dev/null; then
+  echo "  Deleted: service/cribl-stream-managed"
+fi
+# Delete StatefulSets with new volumeClaimTemplates (cannot be updated in-place)
+for name in cribl-edge-standalone cribl-stream-standalone; do
+  if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete statefulset "$name" 2>/dev/null; then
+    echo "  Deleted: statefulset/$name (will recreate with volumeClaimTemplates)"
+  fi
+done
 for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream cribl-stream-standalone; do
   if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment "$name" 2>/dev/null; then
     echo "  Deleted: deployment/$name"
@@ -116,7 +134,7 @@ declare -A timeouts=(
   [otel-collector]=120s
   [cribl-edge-managed]=120s
   [cribl-edge-standalone]=120s
-  [cribl-stream-standalone]=180s
+  [cribl-stream-standalone]=240s
 )
 
 for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do
