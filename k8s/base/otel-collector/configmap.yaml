@@ -61,8 +61,8 @@ data:
             action: upsert
 
     exporters:
-      # Forward OTLP telemetry to Cribl Edge managed fleet via gRPC.
-      # Cribl OTLP source: open_telemetry type, protocol: grpc, port 4317, 0.0.0.0
+      # Forward OTLP telemetry to Cribl Stream Standalone via gRPC.
+      # Cribl Stream Standalone OTLP source: open_telemetry type, protocol: grpc, port 4317, 0.0.0.0
       otlp:
         endpoint: cribl-stream-standalone:4317
         tls:

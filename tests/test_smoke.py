@@ -70,9 +70,29 @@ class TestOtelCollectorHealth:
             stderr=subprocess.DEVNULL,
         )
         try:
-            time.sleep(1)
-            resp = requests.get("http://localhost:13133/", timeout=5)
-            assert resp.status_code == 200, f"Health endpoint returned {resp.status_code}"
+            start_time = time.time()
+            last_error = None
+            timeout_seconds = 10
+            while time.time() - start_time < timeout_seconds:
+                if proc.poll() is not None:
+                    pytest.fail(
+                        "kubectl port-forward process exited before health check; "
+                        "port-forward may have failed to start."
+                    )
+                try:
+                    resp = requests.get("http://localhost:13133/", timeout=2)
+                    assert resp.status_code == 200, (
+                        f"Health endpoint returned {resp.status_code}"
+                    )
+                    break
+                except requests.exceptions.ConnectionError as exc:
+                    last_error = exc
+                    time.sleep(0.5)
+            else:
+                pytest.fail(
+                    f"Timed out after {timeout_seconds}s waiting for OTEL Collector "
+                    f"health endpoint via port-forward: {last_error}"
+                )
         finally:
             proc.terminate()
             proc.wait()

@@ -64,7 +64,7 @@ spec:
               readOnly: true
             - name: cribl-data
               mountPath: /opt/cribl/data
-            - name: cribl-config
+            - name: cribl-config-templates
               mountPath: /opt/cribl-scripts/setup-edge.sh
               subPath: setup-edge.sh
               readOnly: true
@@ -122,9 +122,6 @@ spec:
           hostPath:
             path: PLACEHOLDER_HOME_DIR/logs/ai-jobs
             type: DirectoryOrCreate
-        - name: cribl-config
-          configMap:
-            name: cribl-edge-standalone-config
         - name: pack-source
           hostPath:
             path: PLACEHOLDER_HOME_DIR/git/kubernetes-monitoring/main/packs

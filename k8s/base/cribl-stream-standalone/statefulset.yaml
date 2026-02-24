@@ -57,7 +57,13 @@ spec:
             - name: CRIBL_BEFORE_START_CMD_1
               value: "mkdir -p /opt/cribl/local/cribl/pipelines"
             - name: CRIBL_BEFORE_START_CMD_2
-              value: 'sed -e "s|__SPLUNK_HEC_URL__|$SPLUNK_HEC_URL|g" -e "s|__SPLUNK_HEC_TOKEN__|$SPLUNK_HEC_TOKEN|g" /var/tmp/cribl-config/outputs.yml > /opt/cribl/local/cribl/outputs.yml'
+              value: |
+                if [ -n "${SPLUNK_HEC_URL:-}" ] && [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
+                  sed -e "s|__SPLUNK_HEC_URL__|$SPLUNK_HEC_URL|g" -e "s|__SPLUNK_HEC_TOKEN__|$SPLUNK_HEC_TOKEN|g" /var/tmp/cribl-config/outputs.yml > /opt/cribl/local/cribl/outputs.yml
+                else
+                  echo "SPLUNK_HEC_URL or SPLUNK_HEC_TOKEN not set; copying outputs.yml without substitution" >&2
+                  cp /var/tmp/cribl-config/outputs.yml /opt/cribl/local/cribl/outputs.yml
+                fi
             - name: CRIBL_BEFORE_START_CMD_3
               value: "cp /var/tmp/cribl-config/inputs.yml /opt/cribl/local/cribl/inputs.yml"
             - name: CRIBL_BEFORE_START_CMD_4

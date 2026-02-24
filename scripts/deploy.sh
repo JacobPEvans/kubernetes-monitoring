@@ -134,6 +134,7 @@ declare -A timeouts=(
   [otel-collector]=120s
   [cribl-edge-managed]=120s
   [cribl-edge-standalone]=120s
+  # 240s accounts for PVC provisioning + startupProbe (30 failures × 10s = 300s max)
   [cribl-stream-standalone]=240s
 )
 
