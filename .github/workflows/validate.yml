@@ -28,7 +28,7 @@ jobs:
       - name: Lint YAML
         run: |
           pip install yamllint
-          yamllint -d relaxed k8s/base/
+          yamllint k8s/base/
 
   pre-commit:
     runs-on: ubuntu-latest
