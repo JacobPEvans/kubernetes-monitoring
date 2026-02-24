@@ -29,6 +29,8 @@ repos:
       - id: mixed-line-ending
         name: Normalize line endings
         args: [--fix=lf]
+      - id: check-added-large-files
+        name: Check for large files
 
   # ---------------------------------------------------------------------------
   # Markdown linting
@@ -47,6 +49,17 @@ repos:
     hooks:
       - id: cspell
         name: Check spelling
+
+  # ---------------------------------------------------------------------------
+  # YAML linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        name: Lint YAML files
+        args: [-c, .yamllint.yml]
+        files: '\.(yaml|yml)$'
 
   # ---------------------------------------------------------------------------
   # Link checking

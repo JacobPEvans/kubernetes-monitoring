@@ -2,10 +2,10 @@ name: Validate
 
 on:
   push:
-    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', 'docker/**', 'tests/**']
+    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', '.yamllint.yml', 'docker/**', 'tests/**']
   pull_request:
     branches: [main]
-    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', 'docker/**', 'tests/**']
+    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', '.yamllint.yml', 'docker/**', 'tests/**']
 
 permissions:
   contents: read
@@ -54,4 +54,11 @@ jobs:
       - name: Install test dependencies
         run: pip install -r tests/requirements.txt
       - name: Verify imports
-        run: python -c "from opentelemetry.sdk.trace import TracerProvider; from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter; from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter; import pytest; print('OK')"
+        run: |
+          python -c "
+          from opentelemetry.sdk.trace import TracerProvider
+          from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+          from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+          import pytest
+          print('OK')
+          "

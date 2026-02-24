@@ -1,6 +1,9 @@
 ---
 extends: default
 
+ignore: |
+  secrets.enc.yaml
+
 rules:
   line-length:
     max: 160
