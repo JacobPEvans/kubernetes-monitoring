@@ -3,8 +3,11 @@
 These tests verify the cluster state without sending any telemetry data.
 Fast and safe to run at any time.
 """
+import subprocess
+import time
 import pytest
-from conftest import STATEFULSETS, kubectl, kubectl_json
+import requests
+from conftest import CONTEXT, NAMESPACE, STATEFULSETS, kubectl, kubectl_json
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -55,12 +58,44 @@ class TestServiceEndpoints:
 @pytest.mark.usefixtures("cluster_ready")
 class TestOtelCollectorHealth:
     def test_health_endpoint_reachable(self):
-        """OTEL Collector health endpoint should return 200 via kubectl exec."""
-        output = kubectl(
-            "exec", "statefulset/otel-collector", "--",
-            "curl", "-sf", "http://localhost:13133/"
+        """OTEL Collector health endpoint should return 200 via port-forward.
+
+        The otel-collector image is distroless (no shell or curl), so we use
+        kubectl port-forward and requests from the test host instead.
+        """
+        proc = subprocess.Popen(
+            ["kubectl", "--context", CONTEXT, "-n", NAMESPACE,
+             "port-forward", "statefulset/otel-collector", "13133:13133"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-        assert output, "Health endpoint returned empty response"
+        try:
+            start_time = time.time()
+            last_error = None
+            timeout_seconds = 10
+            while time.time() - start_time < timeout_seconds:
+                if proc.poll() is not None:
+                    pytest.fail(
+                        "kubectl port-forward process exited before health check; "
+                        "port-forward may have failed to start."
+                    )
+                try:
+                    resp = requests.get("http://localhost:13133/", timeout=2)
+                    assert resp.status_code == 200, (
+                        f"Health endpoint returned {resp.status_code}"
+                    )
+                    break
+                except requests.exceptions.ConnectionError as exc:
+                    last_error = exc
+                    time.sleep(0.5)
+            else:
+                pytest.fail(
+                    f"Timed out after {timeout_seconds}s waiting for OTEL Collector "
+                    f"health endpoint via port-forward: {last_error}"
+                )
+        finally:
+            proc.terminate()
+            proc.wait()
 
     @pytest.mark.xfail(reason="Cribl Edge OTLP source may not be configured")
     def test_otel_can_reach_cribl_edge(self):

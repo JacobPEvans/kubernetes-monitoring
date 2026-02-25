@@ -23,3 +23,7 @@ spec:
       port: 4200
       targetPort: 4200
       protocol: TCP
+    - name: otlp
+      port: 4317
+      targetPort: 4317
+      protocol: TCP

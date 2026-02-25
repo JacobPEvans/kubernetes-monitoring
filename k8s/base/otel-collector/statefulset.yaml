@@ -43,6 +43,12 @@ spec:
             - name: ai-job-logs
               mountPath: /var/log/ai-jobs
               readOnly: true
+            - name: pod-logs
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: docker-containers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
           resources:
             requests:
               memory: "256Mi"
@@ -74,3 +80,11 @@ spec:
           hostPath:
             path: PLACEHOLDER_HOME_DIR/logs/ai-jobs
             type: DirectoryOrCreate
+        - name: pod-logs
+          hostPath:
+            path: /var/log/pods
+            type: Directory
+        - name: docker-containers
+          hostPath:
+            path: /var/lib/docker/containers
+            type: Directory

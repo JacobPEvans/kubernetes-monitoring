@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cribl-stream-standalone-config
+  namespace: monitoring
+data:
+  outputs.yml: |
+    outputs:
+      splunk-hec:
+        type: splunk_hec
+        url: "__SPLUNK_HEC_URL__"
+        token: "__SPLUNK_HEC_TOKEN__"
+        index: claude
+        source: cribl-stream
+        sourcetype: "claude:code:session"
+        rejectUnauthorized: false
+        compress: true
+        concurrency: 5
+        maxPayloadSizeKB: 4096
+        onBackpressure: block
+        pqEnabled: true
+        pqMaxSize: "20GB"
+        pqPath: /opt/cribl/data/pq
+      default:
+        type: default
+        defaultId: splunk-hec
+  inputs.yml: |
+    inputs:
+      cribl-http-in:
+        type: cribl_http
+        disabled: false
+        port: 10080
+        host: 0.0.0.0
+        tls:
+          disabled: true
+      otel-in:
+        type: open_telemetry
+        disabled: false
+        port: 4317
+        host: 0.0.0.0
+        grpcConfig: {}
+  pipelines-route.yml: |
+    id: default
+    groups: {}
+    routes:
+      - id: default-route
+        name: Default Route
+        filter: "true"
+        pipeline: passthru
+        output: splunk-hec
+        final: true

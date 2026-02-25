@@ -39,8 +39,11 @@
     "worktrees",
     "xfail",
     "bmuschko",
+    "distroless",
     "kubeconform",
+    "passthru",
     "pipefail",
+    "pmset",
     "yamllint"
   ],
   "ignorePaths": [
