@@ -32,8 +32,11 @@ def _send_trace(test_id: str) -> None:
 def _kubectl_exec_no_fail(*args: str) -> tuple[str, int]:
     """Run kubectl exec and return (stdout, returncode) without raising on failure."""
     cmd = ["kubectl", "--context", CONTEXT, "-n", NAMESPACE, "exec", *args]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-    return result.stdout.strip(), result.returncode
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        return result.stdout.strip(), result.returncode
+    except subprocess.TimeoutExpired:
+        return "", 1
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -129,8 +132,8 @@ class TestStreamToSplunkForwarding:
             "https://host.orb.internal:8088/services/collector",
             "--insecure",
         )
-        # 400/401/405 = HEC reachable but auth/method rejected (expected for bare GET)
-        assert output.strip() in ("400", "401", "403", "405"), (
+        # Any 4xx = HEC reachable but request rejected (expected for bare GET without auth)
+        assert output.strip().startswith("4"), (
             f"Expected HTTP 4xx from Splunk HEC (reachability check), got: '{output.strip()}' "
             f"(curl exit {returncode})"
         )
