@@ -3,8 +3,9 @@
 These tests verify data flows correctly through the pipeline:
   A4: OTEL Collector → Cribl Stream Standalone (gRPC :4317)
   A5: Cribl Edge Standalone → Cribl Stream Standalone (API :9000)
-  A7: Cribl Stream Standalone → Splunk HEC (host.orb.internal:8088)
+  A7: Cribl Stream Standalone → Splunk HEC (:8088 HEC)
 """
+import json
 import subprocess
 import time
 import uuid
@@ -15,7 +16,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
-from conftest import CONTEXT, NAMESPACE, OTEL_GRPC_ENDPOINT, kubectl, port_forward_get
+from conftest import CONTEXT, NAMESPACE, OTEL_GRPC_ENDPOINT, kubectl, kubectl_secret, port_forward_get
 
 
 def _send_trace(test_id: str) -> None:
@@ -120,20 +121,73 @@ class TestStreamToSplunkForwarding:
             f"Cribl Stream outputs API returned unexpected status {resp.status_code}"
         )
 
-    def test_splunk_hec_reachable_from_stream(self):
-        """Cribl Stream pod should be able to reach Splunk HEC (expect 4xx, not timeout).
-
-        Uses curl without -f so HTTP error codes are captured in stdout rather than
-        causing a non-zero exit code. Exit 22 from curl -sf occurs on 4xx responses.
-        """
+    def test_splunk_hec_health_endpoint(self):
+        """Splunk HEC health endpoint should return 200 and 'HEC is healthy' from stream pod."""
+        hec_url = kubectl_secret("splunk-hec-config", "url")
+        health_url = hec_url.replace("/services/collector", "/services/collector/health")
         output, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone", "--",
-            "curl", "-s", "--max-time", "10", "-o", "/dev/null", "-w", "%{http_code}",
-            "https://host.orb.internal:8088/services/collector",
-            "--insecure",
+            "curl", "-s", "--max-time", "10", "-k", health_url,
         )
-        # Any 4xx = HEC reachable but request rejected (expected for bare GET without auth)
-        assert output.strip().startswith("4"), (
-            f"Expected HTTP 4xx from Splunk HEC (reachability check), got: '{output.strip()}' "
-            f"(curl exit {returncode})"
+        assert "HEC is healthy" in output, (
+            f"Expected 'HEC is healthy' in response, got: '{output}' (curl exit {returncode})"
+        )
+
+    def test_splunk_hec_token_accepted(self):
+        """Posting to Splunk HEC with the real token should return 200 Success."""
+        token = kubectl_secret("splunk-hec-config", "token")
+        url = kubectl_secret("splunk-hec-config", "url")
+        output, returncode = _kubectl_exec_no_fail(
+            "statefulset/cribl-stream-standalone", "--",
+            "curl", "-s", "--max-time", "10", "-k",
+            "-H", f"Authorization: Splunk {token}",
+            "-H", "Content-Type: application/json",
+            "-d", '{"event": "test", "sourcetype": "test"}',
+            url,
+        )
+        assert '"text":"Success"' in output or '"code":0' in output, (
+            f"Expected Success from Splunk HEC with token, got: '{output}' (curl exit {returncode})"
+        )
+
+    def test_splunk_hec_url_matches_secret(self):
+        """URL in splunk-hec-config secret should match the URL in Cribl Stream's outputs config."""
+        secret_url = kubectl_secret("splunk-hec-config", "url")
+        output, returncode = _kubectl_exec_no_fail(
+            "statefulset/cribl-stream-standalone", "--",
+            "cat", "/opt/cribl/local/cribl/outputs.yml",
+        )
+        assert secret_url in output, (
+            f"Secret URL '{secret_url}' not found in Cribl Stream outputs.yml "
+            f"(cat exit {returncode}):\n{output[:300]}"
+        )
+
+    def test_cribl_stream_no_output_errors(self):
+        """Cribl Stream logs should contain no warn/error lines for the splunk-hec output."""
+        logs = kubectl("logs", "statefulset/cribl-stream-standalone", "--tail=100")
+        error_lines = [
+            line for line in logs.splitlines()
+            if "output:splunk-hec" in line and ("level=warn" in line or "level=error" in line)
+        ]
+        assert not error_lines, (
+            f"Cribl Stream has output errors for splunk-hec:\n" + "\n".join(error_lines[:5])
+        )
+
+    def test_cribl_stream_events_flowing(self):
+        """After sending a trace, Cribl Stream stats should show outEvents > 0."""
+        _send_trace(str(uuid.uuid4()))
+        time.sleep(10)  # Allow pipeline processing
+        logs = kubectl("logs", "statefulset/cribl-stream-standalone", "--tail=100")
+        stat_lines = [line for line in logs.splitlines() if "outEvents" in line]
+        out_events = 0
+        for line in stat_lines:
+            try:
+                json_start = line.index("{")
+                data = json.loads(line[json_start:])
+                if isinstance(data.get("outEvents"), (int, float)):
+                    out_events += data["outEvents"]
+            except (ValueError, KeyError):
+                continue
+        assert out_events > 0, (
+            f"Expected outEvents > 0 in Cribl Stream stats after sending trace, "
+            f"got {out_events}. Relevant log lines:\n" + "\n".join(stat_lines[:5])
         )

@@ -1,4 +1,5 @@
 """Shared test fixtures and utilities for OTEL pipeline tests."""
+import base64
 import json
 import os
 import subprocess
@@ -34,6 +35,15 @@ def kubectl_json(*args: str) -> Any:
     """Run kubectl and parse JSON output."""
     output = kubectl(*args, "-o", "json")
     return json.loads(output)
+
+
+def kubectl_secret(name: str, key: str) -> str:
+    """Read a k8s secret value (base64 decoded)."""
+    data = kubectl_json("get", "secret", name)
+    encoded = data.get("data", {}).get(key)
+    if not encoded:
+        raise RuntimeError(f"Secret {name}[{key}] not found or empty")
+    return base64.b64decode(encoded).decode()
 
 
 def port_forward_get(
