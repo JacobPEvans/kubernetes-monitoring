@@ -46,6 +46,19 @@ def kubectl_secret(name: str, key: str) -> str:
     return base64.b64decode(encoded).decode()
 
 
+def kubectl_secret_values(name: str, keys: list[str]) -> dict[str, str]:
+    """Read multiple k8s secret values in a single kubectl call (base64 decoded)."""
+    data = kubectl_json("get", "secret", name)
+    secret_data = data.get("data", {})
+    result = {}
+    for key in keys:
+        encoded = secret_data.get(key)
+        if not encoded:
+            raise RuntimeError(f"Secret {name}[{key}] not found or empty")
+        result[key] = base64.b64decode(encoded).decode()
+    return result
+
+
 def port_forward_get(
     statefulset: str,
     container_port: int,

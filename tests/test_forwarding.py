@@ -6,6 +6,7 @@ These tests verify data flows correctly through the pipeline:
   A7: Cribl Stream Standalone → Splunk HEC (:8088 HEC)
 """
 import json
+import re
 import subprocess
 import time
 import uuid
@@ -16,7 +17,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
-from conftest import CONTEXT, NAMESPACE, OTEL_GRPC_ENDPOINT, kubectl, kubectl_secret, port_forward_get
+from conftest import CONTEXT, NAMESPACE, OTEL_GRPC_ENDPOINT, kubectl, kubectl_secret, kubectl_secret_values, port_forward_get
 
 
 def _send_trace(test_id: str) -> None:
@@ -135,8 +136,8 @@ class TestStreamToSplunkForwarding:
 
     def test_splunk_hec_token_accepted(self):
         """Posting to Splunk HEC with the real token should return 200 Success."""
-        token = kubectl_secret("splunk-hec-config", "token")
-        url = kubectl_secret("splunk-hec-config", "url")
+        secrets = kubectl_secret_values("splunk-hec-config", ["token", "url"])
+        token, url = secrets["token"], secrets["url"]
         output, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone", "--",
             "curl", "-s", "--max-time", "10", "-k",
@@ -156,8 +157,8 @@ class TestStreamToSplunkForwarding:
             "statefulset/cribl-stream-standalone", "--",
             "cat", "/opt/cribl/local/cribl/outputs.yml",
         )
-        assert secret_url in output, (
-            f"Secret URL '{secret_url}' not found in Cribl Stream outputs.yml "
+        assert re.search(fr"^\s*url:\s*{re.escape(secret_url)}\s*$", output, re.MULTILINE), (
+            f"Secret URL '{secret_url}' not found as 'url:' value in Cribl Stream outputs.yml "
             f"(cat exit {returncode}):\n{output[:300]}"
         )
 
