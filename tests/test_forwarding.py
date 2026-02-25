@@ -123,31 +123,52 @@ class TestStreamToSplunkForwarding:
         )
 
     def test_splunk_hec_health_endpoint(self):
-        """Splunk HEC health endpoint should return 200 and 'HEC is healthy' from stream pod."""
+        """Splunk HEC health endpoint should return HTTP 200 with 'HEC is healthy' from stream pod."""
         hec_url = kubectl_secret("splunk-hec-config", "url")
         health_url = hec_url.replace("/services/collector", "/services/collector/health")
         output, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone", "--",
-            "curl", "-s", "--max-time", "10", "-k", health_url,
+            "curl", "-s", "--max-time", "10", "-k",
+            "-w", "\n%{http_code}",
+            health_url,
         )
-        assert "HEC is healthy" in output, (
-            f"Expected 'HEC is healthy' in response, got: '{output}' (curl exit {returncode})"
+        lines = output.splitlines()
+        assert lines, f"No output from Splunk HEC health endpoint (curl exit {returncode})"
+        status_code = lines[-1].strip()
+        body = "\n".join(lines[:-1])
+        assert status_code == "200", (
+            f"Expected HTTP 200 from Splunk HEC health endpoint, got {status_code} "
+            f"(curl exit {returncode}, body: '{body}')"
+        )
+        assert "HEC is healthy" in body, (
+            f"Expected 'HEC is healthy' in response body, got: '{body}' "
+            f"(curl exit {returncode}, status {status_code})"
         )
 
     def test_splunk_hec_token_accepted(self):
-        """Posting to Splunk HEC with the real token should return 200 Success."""
+        """Posting to Splunk HEC with the real token should return HTTP 200 with Success body."""
         secrets = kubectl_secret_values("splunk-hec-config", ["token", "url"])
         token, url = secrets["token"], secrets["url"]
         output, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone", "--",
             "curl", "-s", "--max-time", "10", "-k",
+            "-w", "\n%{http_code}",
             "-H", f"Authorization: Splunk {token}",
             "-H", "Content-Type: application/json",
             "-d", '{"event": "test", "sourcetype": "test"}',
             url,
         )
-        assert '"text":"Success"' in output or '"code":0' in output, (
-            f"Expected Success from Splunk HEC with token, got: '{output}' (curl exit {returncode})"
+        lines = output.splitlines()
+        assert lines, f"No output from Splunk HEC (curl exit {returncode})"
+        status_code = lines[-1].strip()
+        body = "\n".join(lines[:-1])
+        assert status_code == "200", (
+            f"Expected HTTP 200 from Splunk HEC with token, got {status_code} "
+            f"(curl exit {returncode}, body: '{body}')"
+        )
+        assert '"text":"Success"' in body or '"code":0' in body, (
+            f"Expected Success in HEC response body, got: '{body}' "
+            f"(curl exit {returncode}, status {status_code})"
         )
 
     def test_splunk_hec_url_matches_secret(self):
@@ -174,21 +195,27 @@ class TestStreamToSplunkForwarding:
         )
 
     def test_cribl_stream_events_flowing(self):
-        """After sending a trace, Cribl Stream stats should show outEvents > 0."""
+        """After sending a trace, Cribl Stream stats should show outBytes > 0.
+
+        Checks _raw stats for outBytes > 0 (bytes actually sent to an external output),
+        not just outEvents (which counts pipeline-internal routing). Since splunk-hec is
+        the only non-default output and all routes lead there, outBytes > 0 confirms
+        data was physically sent to Splunk HEC.
+        """
         _send_trace(str(uuid.uuid4()))
         time.sleep(10)  # Allow pipeline processing
         logs = kubectl("logs", "statefulset/cribl-stream-standalone", "--tail=100")
-        stat_lines = [line for line in logs.splitlines() if "outEvents" in line]
-        out_events = 0
-        for line in stat_lines:
+        flowing = []
+        for line in logs.splitlines():
             try:
-                json_start = line.index("{")
-                data = json.loads(line[json_start:])
-                if isinstance(data.get("outEvents"), (int, float)):
-                    out_events += data["outEvents"]
+                data = json.loads(line)
+                if (data.get("message") == "_raw stats"
+                        and data.get("outEvents", 0) > 0
+                        and data.get("outBytes", 0) > 0):
+                    flowing.append(line)
             except (ValueError, KeyError):
                 continue
-        assert out_events > 0, (
-            f"Expected outEvents > 0 in Cribl Stream stats after sending trace, "
-            f"got {out_events}. Relevant log lines:\n" + "\n".join(stat_lines[:5])
+        assert flowing, (
+            "Expected _raw stats with outBytes > 0 after sending trace "
+            "(data physically sent to splunk-hec), found none in last 100 log lines."
         )
