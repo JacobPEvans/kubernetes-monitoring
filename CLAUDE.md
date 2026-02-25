@@ -27,14 +27,16 @@ Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 ## Architecture
 
+See [Architecture Diagram](docs/ARCHITECTURE.md) for the full data flow and test coverage map.
+
 Four StatefulSets in the monitoring namespace:
 
 | StatefulSet | Role | UI |
 |------------|------|-----|
-| `otel-collector` | OTLP receiver, forwards to managed edge | None |
-| `cribl-edge-managed` | Cloud-managed edge, receives OTLP on :9420 | None |
-| `cribl-edge-standalone` | Local edge with pack, Splunk HEC output | :30910 |
-| `cribl-stream-standalone` | Local Stream leader with UI | :30900 |
+| `otel-collector` | OTLP receiver, forwards to Cribl Stream Standalone | None |
+| `cribl-edge-managed` | Cloud-managed edge, forwards to Cribl Cloud | None |
+| `cribl-edge-standalone` | Local edge with pack, forwards to Cribl Stream Standalone | :30910 |
+| `cribl-stream-standalone` | Local Stream leader with UI, outputs to Splunk HEC | :30900 |
 
 Directory layout:
 

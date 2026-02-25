@@ -1,4 +1,4 @@
-.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-smoke test-pipeline test-forwarding test-setup full-power power-save power-status clean
+.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-e2e test-smoke test-pipeline test-forwarding test-setup full-power power-save power-status clean
 
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
@@ -49,9 +49,13 @@ test-pipeline: ## Run OTLP pipeline tests (sends test traces)
 	@test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
 	.venv/bin/pytest tests/test_pipeline.py -v
 
-test-forwarding: ## Run forwarding tests (collector to Cribl Edge)
+test-forwarding: ## Run forwarding tests (Cribl pipeline)
 	@test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
 	.venv/bin/pytest tests/test_forwarding.py -v
+
+test-e2e: ## Run full test suite in order (smoke → pipeline → forwarding)
+	@test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
+	.venv/bin/pytest tests/test_smoke.py tests/test_pipeline.py tests/test_forwarding.py -v --tb=short
 
 test-setup: ## Install test dependencies in virtual environment
 	python3 -m venv .venv

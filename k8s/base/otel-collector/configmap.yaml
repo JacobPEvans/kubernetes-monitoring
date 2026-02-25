@@ -88,4 +88,4 @@ data:
         logs:
           receivers: [otlp, filelog, filelog/k8slogs]
           processors: [batch, resource]
-          exporters: [otlp, debug]
+          exporters: [debug]
