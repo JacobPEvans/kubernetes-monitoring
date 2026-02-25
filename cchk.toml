@@ -1,0 +1,6 @@
+[branch]
+# https://conventional-branch.github.io/
+conventional_branch = true
+allow_branch_types = ["feature", "bugfix", "hotfix", "release", "chore", "feat", "fix", "renovate"]
+require_rebase_target = "main"
+ignore_authors = ["renovate[bot]"]

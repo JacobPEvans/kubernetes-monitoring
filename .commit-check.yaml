@@ -1,3 +1,0 @@
-checks:
-  - check: branch
-    pattern: '^(feature|bugfix|hotfix|release|chore|feat|fix|renovate)\/.+|(master)|(main)|(HEAD)|(PR-.+)'
