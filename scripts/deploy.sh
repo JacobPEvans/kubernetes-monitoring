@@ -52,10 +52,9 @@ fi
 SPLUNK_HEC_URL=""
 if [ -n "${SPLUNK_NETWORK:-}" ]; then
   SPLUNK_IP=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])[0])" "$SPLUNK_NETWORK" 2>/dev/null || true)
-  # Use host.orb.internal so K8s pods can reach Splunk via OrbStack's host proxy.
-  # Direct IP (${SPLUNK_IP}:8088) is unreachable from pods due to OrbStack NAT;
-  # OrbStack transparently proxies LAN Splunk ports on host.orb.internal.
-  [ -n "$SPLUNK_IP" ] && SPLUNK_HEC_URL="https://host.orb.internal:8088/services/collector"
+  # Use direct IP — OrbStack's host.orb.internal proxy strips Authorization headers,
+  # causing 403 "Invalid token" on all authenticated POSTs.
+  [ -n "$SPLUNK_IP" ] && SPLUNK_HEC_URL="https://${SPLUNK_IP}:8088/services/collector"
 fi
 if [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
   HEC_ARGS=(--from-literal=token="$SPLUNK_HEC_TOKEN")

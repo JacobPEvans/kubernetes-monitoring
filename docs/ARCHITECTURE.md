@@ -10,7 +10,7 @@ flowchart LR
     EdgeStandalone["cribl-edge-standalone\nUI :30910"]
     EdgeManaged[cribl-edge-managed]
     StreamStandalone["cribl-stream-standalone\nUI :30900"]
-    SplunkHEC["Splunk HEC\nhost.orb.internal:8088"]
+    SplunkHEC["Splunk HEC\n:8088 HEC"]
     CriblCloud["Cribl Cloud\n(external)"]
 
     Client -->|"A1: OTLP gRPC/HTTP"| OtelCollector
@@ -32,4 +32,4 @@ flowchart LR
 | A4 | OTEL Collector → Cribl Stream | `test_no_export_errors_after_send`, `test_cribl_stream_received_otlp_data` | test_forwarding.py |
 | A5 | Edge Standalone → Cribl Stream | `test_edge_to_stream_connectivity`, `test_cribl_stream_received_edge_data` | test_forwarding.py |
 | A6 | Edge Managed → Cribl Cloud | Not locally testable (cloud-managed) | — |
-| A7 | Cribl Stream → Splunk HEC | `test_splunk_hec_output_healthy`, `test_splunk_hec_reachable_from_stream` | test_forwarding.py |
+| A7 | Cribl Stream → Splunk HEC | `test_splunk_hec_output_healthy`, `test_splunk_hec_health_endpoint`, `test_splunk_hec_token_accepted`, `test_splunk_hec_url_matches_secret`, `test_cribl_stream_no_output_errors`, `test_cribl_stream_events_flowing` | test_forwarding.py |
