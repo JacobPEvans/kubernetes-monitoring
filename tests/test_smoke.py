@@ -7,44 +7,7 @@ import subprocess
 import time
 import pytest
 import requests
-from conftest import CONTEXT, NAMESPACE, STATEFULSETS, kubectl_json
-
-
-def _port_forward_health(statefulset: str, container_port: int, local_port: int, path: str = "/api/v1/health") -> requests.Response:
-    """Port-forward to a StatefulSet and GET the given health path.
-
-    Uses the same pattern as TestOtelCollectorHealth.test_health_endpoint_reachable
-    to avoid exec into distroless or restricted containers.
-    """
-    proc = subprocess.Popen(
-        ["kubectl", "--context", CONTEXT, "-n", NAMESPACE,
-         "port-forward", f"statefulset/{statefulset}", f"{local_port}:{container_port}"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        start_time = time.time()
-        last_error = None
-        timeout_seconds = 15
-        while time.time() - start_time < timeout_seconds:
-            if proc.poll() is not None:
-                pytest.fail(
-                    f"kubectl port-forward process exited before health check for {statefulset}; "
-                    "port may already be in use."
-                )
-            try:
-                resp = requests.get(f"http://localhost:{local_port}{path}", timeout=2)
-                return resp
-            except requests.exceptions.ConnectionError as exc:
-                last_error = exc
-                time.sleep(0.5)
-        pytest.fail(
-            f"Timed out after {timeout_seconds}s waiting for {statefulset} "
-            f"health endpoint via port-forward: {last_error}"
-        )
-    finally:
-        proc.terminate()
-        proc.wait()
+from conftest import CONTEXT, NAMESPACE, STATEFULSETS, kubectl_json, port_forward_get
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -158,14 +121,14 @@ class TestCriblHealth:
 
         Cribl Stream API is on port 9000 (not 9420 which is only used by Cribl Edge).
         """
-        resp = _port_forward_health("cribl-stream-standalone", 9000, 19420)
+        resp = port_forward_get("cribl-stream-standalone", 9000, 19420, path="/api/v1/health")
         assert resp.status_code == 200, (
             f"Cribl Stream health returned {resp.status_code}: {resp.text[:200]}"
         )
 
     def test_cribl_edge_standalone_health(self):
         """Cribl Edge Standalone /api/v1/health should return 200 via port-forward."""
-        resp = _port_forward_health("cribl-edge-standalone", 9420, 19421)
+        resp = port_forward_get("cribl-edge-standalone", 9420, 19421, path="/api/v1/health")
         assert resp.status_code == 200, (
             f"Cribl Edge health returned {resp.status_code}: {resp.text[:200]}"
         )

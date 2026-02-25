@@ -2,8 +2,10 @@
 import json
 import os
 import subprocess
+import time
 from typing import Any
 import pytest
+import requests
 
 CONTEXT = os.environ.get("KUBE_CONTEXT", "orbstack")
 NAMESPACE = os.environ.get("KUBE_NAMESPACE", "monitoring")
@@ -32,6 +34,48 @@ def kubectl_json(*args: str) -> Any:
     """Run kubectl and parse JSON output."""
     output = kubectl(*args, "-o", "json")
     return json.loads(output)
+
+
+def port_forward_get(
+    statefulset: str,
+    container_port: int,
+    local_port: int,
+    path: str = "/",
+    timeout_seconds: int = 15,
+) -> requests.Response:
+    """Port-forward to a StatefulSet and perform a GET request.
+
+    Avoids kubectl exec into distroless or restricted containers by using
+    a local port-forward and requests from the test host instead.
+    """
+    proc = subprocess.Popen(
+        ["kubectl", "--context", CONTEXT, "-n", NAMESPACE,
+         "port-forward", f"statefulset/{statefulset}", f"{local_port}:{container_port}"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        start_time = time.time()
+        last_error = None
+        while time.time() - start_time < timeout_seconds:
+            if proc.poll() is not None:
+                pytest.fail(
+                    f"kubectl port-forward process exited before request for {statefulset}; "
+                    "port may already be in use."
+                )
+            try:
+                resp = requests.get(f"http://localhost:{local_port}{path}", timeout=2)
+                return resp
+            except requests.exceptions.ConnectionError as exc:
+                last_error = exc
+                time.sleep(0.5)
+        pytest.fail(
+            f"Timed out after {timeout_seconds}s waiting for {statefulset} "
+            f"via port-forward on :{local_port}: {last_error}"
+        )
+    finally:
+        proc.terminate()
+        proc.wait()
 
 
 @pytest.fixture(scope="session")

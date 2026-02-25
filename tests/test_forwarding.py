@@ -10,13 +10,12 @@ import time
 import uuid
 
 import pytest
-import requests
 
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
-from conftest import CONTEXT, NAMESPACE, OTEL_GRPC_ENDPOINT, kubectl
+from conftest import CONTEXT, NAMESPACE, OTEL_GRPC_ENDPOINT, kubectl, port_forward_get
 
 
 def _send_trace(test_id: str) -> None:
@@ -28,30 +27,6 @@ def _send_trace(test_id: str) -> None:
     with tracer.start_as_current_span("forward-test-span") as span:
         span.set_attribute("test.id", test_id)
     provider.shutdown()
-
-
-def _port_forward_get(statefulset: str, container_port: int, local_port: int, path: str) -> requests.Response:
-    """Port-forward to a StatefulSet and perform a GET request."""
-    proc = subprocess.Popen(
-        ["kubectl", "--context", CONTEXT, "-n", NAMESPACE,
-         "port-forward", f"statefulset/{statefulset}", f"{local_port}:{container_port}"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        start_time = time.time()
-        while time.time() - start_time < 10:
-            if proc.poll() is not None:
-                pytest.fail(f"Port-forward to {statefulset} exited unexpectedly")
-            try:
-                resp = requests.get(f"http://localhost:{local_port}{path}", timeout=3)
-                return resp
-            except requests.exceptions.ConnectionError:
-                time.sleep(0.5)
-        pytest.fail(f"Timed out connecting to {statefulset} via port-forward on :{local_port}")
-    finally:
-        proc.terminate()
-        proc.wait()
 
 
 def _kubectl_exec_no_fail(*args: str) -> tuple[str, int]:
@@ -94,7 +69,7 @@ class TestCollectorToStreamForwarding:
         """After sending a trace, Cribl Stream API should be reachable to verify input activity."""
         _send_trace(str(uuid.uuid4()))
         time.sleep(5)
-        resp = _port_forward_get("cribl-stream-standalone", 9000, 19422, "/api/v1/system/inputs")
+        resp = port_forward_get("cribl-stream-standalone", 9000, 19422, "/api/v1/system/inputs")
         # 200 = API accessible, 401 = auth required (inputs endpoint exists)
         assert resp.status_code in (200, 401), (
             f"Cribl Stream inputs API returned unexpected status {resp.status_code}"
@@ -122,9 +97,9 @@ class TestEdgeToStreamForwarding:
             f"(curl exit {returncode})"
         )
 
-    def test_cribl_stream_received_edge_data(self):
-        """Cribl Stream API should be reachable to verify edge input activity."""
-        resp = _port_forward_get("cribl-stream-standalone", 9000, 19423, "/api/v1/system/inputs")
+    def test_cribl_stream_inputs_api_reachable(self):
+        """Cribl Stream inputs API endpoint should be reachable after edge connectivity check."""
+        resp = port_forward_get("cribl-stream-standalone", 9000, 19423, "/api/v1/system/inputs")
         assert resp.status_code in (200, 401), (
             f"Cribl Stream inputs API returned unexpected status {resp.status_code}"
         )
@@ -136,7 +111,7 @@ class TestStreamToSplunkForwarding:
 
     def test_splunk_hec_output_healthy(self):
         """Cribl Stream API should report the Splunk HEC output as configured."""
-        resp = _port_forward_get("cribl-stream-standalone", 9000, 19424, "/api/v1/system/outputs")
+        resp = port_forward_get("cribl-stream-standalone", 9000, 19424, "/api/v1/system/outputs")
         # 200 = API accessible, 401 = auth required (output endpoint exists)
         assert resp.status_code in (200, 401), (
             f"Cribl Stream outputs API returned unexpected status {resp.status_code}"
