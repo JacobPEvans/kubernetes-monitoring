@@ -1,0 +1,22 @@
+version: "0.2"
+words:
+  - hammerspoon
+  - powermode
+  - kustomize
+  - kubeconform
+  - orbstack
+  - cribl
+  - otel
+  - otlp
+  - statefulset
+  - statefulsets
+  - configmap
+  - kubernetes
+  - kubectl
+  - doppler
+  - sops
+  - grpc
+  - healthz
+  - hostpath
+  - nodeport
+  - splunk
