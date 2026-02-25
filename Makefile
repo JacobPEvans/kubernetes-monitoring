@@ -1,7 +1,8 @@
-.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-smoke test-pipeline test-forwarding test-setup full-power power-save power-status clean
+.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-e2e test-smoke test-pipeline test-forwarding test-setup full-power power-save power-status clean
 
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
+PYTEST_CHECK := test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
 
 help: ## Show all targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -38,20 +39,24 @@ run-gemini: ## Create a Gemini CLI ephemeral job
 	sed "s|PLACEHOLDER_HOME_DIR|$$HOME|g" k8s/base/ai-jobs/gemini-cli-job.yaml | kubectl --context $(CONTEXT) apply -f -
 
 test: ## Run all pipeline tests (requires deployed stack)
-	@test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
+	@$(PYTEST_CHECK)
 	.venv/bin/pytest tests/ -v
 
 test-smoke: ## Run smoke tests only (pod health + services)
-	@test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
+	@$(PYTEST_CHECK)
 	.venv/bin/pytest tests/test_smoke.py -v
 
 test-pipeline: ## Run OTLP pipeline tests (sends test traces)
-	@test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
+	@$(PYTEST_CHECK)
 	.venv/bin/pytest tests/test_pipeline.py -v
 
-test-forwarding: ## Run forwarding tests (collector to Cribl Edge)
-	@test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
+test-forwarding: ## Run forwarding tests (Cribl pipeline)
+	@$(PYTEST_CHECK)
 	.venv/bin/pytest tests/test_forwarding.py -v
+
+test-e2e: ## Run full test suite in order (smoke → pipeline → forwarding)
+	@$(PYTEST_CHECK)
+	.venv/bin/pytest tests/test_smoke.py tests/test_pipeline.py tests/test_forwarding.py -v --tb=short
 
 test-setup: ## Install test dependencies in virtual environment
 	python3 -m venv .venv

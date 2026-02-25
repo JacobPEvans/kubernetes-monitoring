@@ -7,7 +7,7 @@ import subprocess
 import time
 import pytest
 import requests
-from conftest import CONTEXT, NAMESPACE, STATEFULSETS, kubectl, kubectl_json
+from conftest import CONTEXT, NAMESPACE, STATEFULSETS, kubectl_json, port_forward_get
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -54,6 +54,22 @@ class TestServiceEndpoints:
         ports = [p["port"] for p in data["spec"]["ports"]]
         assert 9420 in ports
 
+    def test_cribl_stream_standalone_ui_service(self):
+        """Cribl Stream Standalone dedicated NodePort service should expose UI on :30900."""
+        data = kubectl_json("get", "service", "cribl-stream-standalone-ui")
+        port_map = {p["name"]: p.get("nodePort") for p in data["spec"]["ports"]}
+        assert 30900 in port_map.values(), (
+            f"Expected NodePort 30900 for Cribl Stream UI, got: {port_map}"
+        )
+
+    def test_cribl_edge_standalone_ui_service(self):
+        """Cribl Edge Standalone dedicated NodePort service should expose UI on :30910."""
+        data = kubectl_json("get", "service", "cribl-edge-standalone-ui")
+        port_map = {p["name"]: p.get("nodePort") for p in data["spec"]["ports"]}
+        assert 30910 in port_map.values(), (
+            f"Expected NodePort 30910 for Cribl Edge UI, got: {port_map}"
+        )
+
 
 @pytest.mark.usefixtures("cluster_ready")
 class TestOtelCollectorHealth:
@@ -97,12 +113,22 @@ class TestOtelCollectorHealth:
             proc.terminate()
             proc.wait()
 
-    @pytest.mark.xfail(reason="Cribl Edge OTLP source may not be configured")
-    def test_otel_can_reach_cribl_edge(self):
-        """OTEL Collector should be able to reach Cribl Edge on port 9420."""
-        output = kubectl(
-            "exec", "statefulset/otel-collector", "--",
-            "curl", "-sf", "--max-time", "5",
-            "http://cribl-edge-managed:9420/api/v1/health"
+
+@pytest.mark.usefixtures("cluster_ready")
+class TestCriblHealth:
+    def test_cribl_stream_standalone_health(self):
+        """Cribl Stream Standalone /api/v1/health should return 200 via port-forward.
+
+        Cribl Stream API is on port 9000 (not 9420 which is only used by Cribl Edge).
+        """
+        resp = port_forward_get("cribl-stream-standalone", 9000, 19420, path="/api/v1/health")
+        assert resp.status_code == 200, (
+            f"Cribl Stream health returned {resp.status_code}: {resp.text[:200]}"
         )
-        assert output
+
+    def test_cribl_edge_standalone_health(self):
+        """Cribl Edge Standalone /api/v1/health should return 200 via port-forward."""
+        resp = port_forward_get("cribl-edge-standalone", 9420, 19421, path="/api/v1/health")
+        assert resp.status_code == 200, (
+            f"Cribl Edge health returned {resp.status_code}: {resp.text[:200]}"
+        )
