@@ -11,7 +11,7 @@
     {
       "description": "Tier 1: Automerge own and official GitHub Actions (all update types)",
       "matchManagers": ["github-actions"],
-      "matchPackagePrefixes": ["actions/", "jacobpevans/"],
+      "matchPackagePrefixes": ["actions/", "JacobPEvans/"],
       "groupName": "github-actions-trusted",
       "groupSlug": "github-actions-trusted",
       "automerge": true,
