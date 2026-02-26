@@ -4,16 +4,19 @@ These tests send actual trace data through the OTEL Collector and verify
 the exporter returned SUCCESS (indicating the collector accepted the data).
 Requires the stack to be deployed and NodePorts accessible.
 """
+
 import uuid
 
 import pytest
-
+from conftest import OTEL_GRPC_ENDPOINT, OTEL_HTTP_ENDPOINT
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+    OTLPSpanExporter as GrpcExporter,
+)
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
+    OTLPSpanExporter as HttpExporter,
+)
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SpanExportResult
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GrpcExporter
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HttpExporter
-
-from conftest import OTEL_GRPC_ENDPOINT, OTEL_HTTP_ENDPOINT
 
 
 def _create_test_span() -> object:
@@ -36,9 +39,7 @@ class TestOtlpGrpcIngestion:
         exporter = GrpcExporter(endpoint=OTEL_GRPC_ENDPOINT, insecure=True)
         result = exporter.export([span])
         exporter.shutdown()
-        assert result == SpanExportResult.SUCCESS, (
-            f"OTLP gRPC export to {OTEL_GRPC_ENDPOINT} failed: {result}"
-        )
+        assert result == SpanExportResult.SUCCESS, f"OTLP gRPC export to {OTEL_GRPC_ENDPOINT} failed: {result}"
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -49,6 +50,4 @@ class TestOtlpHttpIngestion:
         exporter = HttpExporter(endpoint=f"{OTEL_HTTP_ENDPOINT}/v1/traces")
         result = exporter.export([span])
         exporter.shutdown()
-        assert result == SpanExportResult.SUCCESS, (
-            f"OTLP HTTP export to {OTEL_HTTP_ENDPOINT} failed: {result}"
-        )
+        assert result == SpanExportResult.SUCCESS, f"OTLP HTTP export to {OTEL_HTTP_ENDPOINT} failed: {result}"

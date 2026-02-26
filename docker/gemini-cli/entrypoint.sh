@@ -11,7 +11,7 @@ fi
 export LOG_DIR="/logs"
 
 echo "Starting Gemini CLI container"
-echo "  Workspace: /logs"
+echo "  Workspace: /workspace"
 echo "  Log dir: /logs"
 echo "  Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 

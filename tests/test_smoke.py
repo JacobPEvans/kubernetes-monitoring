@@ -3,8 +3,10 @@
 These tests verify the cluster state without sending any telemetry data.
 Fast and safe to run at any time.
 """
+
 import subprocess
 import time
+
 import pytest
 import requests
 from conftest import CONTEXT, NAMESPACE, STATEFULSETS, kubectl_json, port_forward_get
@@ -58,17 +60,13 @@ class TestServiceEndpoints:
         """Cribl Stream Standalone dedicated NodePort service should expose UI on :30900."""
         data = kubectl_json("get", "service", "cribl-stream-standalone-ui")
         port_map = {p["name"]: p.get("nodePort") for p in data["spec"]["ports"]}
-        assert 30900 in port_map.values(), (
-            f"Expected NodePort 30900 for Cribl Stream UI, got: {port_map}"
-        )
+        assert 30900 in port_map.values(), f"Expected NodePort 30900 for Cribl Stream UI, got: {port_map}"
 
     def test_cribl_edge_standalone_ui_service(self):
         """Cribl Edge Standalone dedicated NodePort service should expose UI on :30910."""
         data = kubectl_json("get", "service", "cribl-edge-standalone-ui")
         port_map = {p["name"]: p.get("nodePort") for p in data["spec"]["ports"]}
-        assert 30910 in port_map.values(), (
-            f"Expected NodePort 30910 for Cribl Edge UI, got: {port_map}"
-        )
+        assert 30910 in port_map.values(), f"Expected NodePort 30910 for Cribl Edge UI, got: {port_map}"
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -80,8 +78,16 @@ class TestOtelCollectorHealth:
         kubectl port-forward and requests from the test host instead.
         """
         proc = subprocess.Popen(
-            ["kubectl", "--context", CONTEXT, "-n", NAMESPACE,
-             "port-forward", "statefulset/otel-collector", "13133:13133"],
+            [
+                "kubectl",
+                "--context",
+                CONTEXT,
+                "-n",
+                NAMESPACE,
+                "port-forward",
+                "statefulset/otel-collector",
+                "13133:13133",
+            ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -97,9 +103,7 @@ class TestOtelCollectorHealth:
                     )
                 try:
                     resp = requests.get("http://localhost:13133/", timeout=2)
-                    assert resp.status_code == 200, (
-                        f"Health endpoint returned {resp.status_code}"
-                    )
+                    assert resp.status_code == 200, f"Health endpoint returned {resp.status_code}"
                     break
                 except requests.exceptions.ConnectionError as exc:
                     last_error = exc
@@ -122,13 +126,9 @@ class TestCriblHealth:
         Cribl Stream API is on port 9000 (not 9420 which is only used by Cribl Edge).
         """
         resp = port_forward_get("cribl-stream-standalone", 9000, 19420, path="/api/v1/health")
-        assert resp.status_code == 200, (
-            f"Cribl Stream health returned {resp.status_code}: {resp.text[:200]}"
-        )
+        assert resp.status_code == 200, f"Cribl Stream health returned {resp.status_code}: {resp.text[:200]}"
 
     def test_cribl_edge_standalone_health(self):
         """Cribl Edge Standalone /api/v1/health should return 200 via port-forward."""
         resp = port_forward_get("cribl-edge-standalone", 9420, 19421, path="/api/v1/health")
-        assert resp.status_code == 200, (
-            f"Cribl Edge health returned {resp.status_code}: {resp.text[:200]}"
-        )
+        assert resp.status_code == 200, f"Cribl Edge health returned {resp.status_code}: {resp.text[:200]}"

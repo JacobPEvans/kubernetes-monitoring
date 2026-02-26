@@ -1,10 +1,12 @@
 """Shared test fixtures and utilities for OTEL pipeline tests."""
+
 import base64
 import json
 import os
 import subprocess
 import time
 from typing import Any
+
 import pytest
 import requests
 
@@ -25,9 +27,7 @@ def kubectl(*args: str) -> str:
     cmd = ["kubectl", "--context", CONTEXT, "-n", NAMESPACE, *args]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
     if result.returncode != 0:
-        raise RuntimeError(
-            f"kubectl {' '.join(args)} failed:\nstderr: {result.stderr}\nstdout: {result.stdout}"
-        )
+        raise RuntimeError(f"kubectl {' '.join(args)} failed:\nstderr: {result.stderr}\nstdout: {result.stdout}")
     return result.stdout.strip()
 
 
@@ -72,8 +72,16 @@ def port_forward_get(
     a local port-forward and requests from the test host instead.
     """
     proc = subprocess.Popen(
-        ["kubectl", "--context", CONTEXT, "-n", NAMESPACE,
-         "port-forward", f"statefulset/{statefulset}", f"{local_port}:{container_port}"],
+        [
+            "kubectl",
+            "--context",
+            CONTEXT,
+            "-n",
+            NAMESPACE,
+            "port-forward",
+            f"statefulset/{statefulset}",
+            f"{local_port}:{container_port}",
+        ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -83,8 +91,7 @@ def port_forward_get(
         while time.time() - start_time < timeout_seconds:
             if proc.poll() is not None:
                 pytest.fail(
-                    f"kubectl port-forward process exited before request for {statefulset}; "
-                    "port may already be in use."
+                    f"kubectl port-forward process exited before request for {statefulset}; port may already be in use."
                 )
             try:
                 resp = requests.get(f"http://localhost:{local_port}{path}", timeout=2)
@@ -111,5 +118,9 @@ def cluster_ready():
             timeout=10,
             check=True,
         )
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+    except (
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+        FileNotFoundError,
+    ):
         pytest.skip("OrbStack cluster not reachable")

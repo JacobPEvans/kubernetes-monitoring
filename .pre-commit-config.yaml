@@ -33,6 +33,27 @@ repos:
         name: Check for large files
 
   # ---------------------------------------------------------------------------
+  # Python linting and formatting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.0
+    hooks:
+      - id: ruff
+        name: Lint Python (ruff)
+        args: [--fix]
+      - id: ruff-format
+        name: Format Python (ruff)
+
+  # ---------------------------------------------------------------------------
+  # Shell script linting
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        name: Lint shell scripts
+
+  # ---------------------------------------------------------------------------
   # Markdown linting
   # ---------------------------------------------------------------------------
   - repo: https://github.com/DavidAnson/markdownlint-cli2
