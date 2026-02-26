@@ -47,6 +47,7 @@
     "pipefail",
     "pmset",
     "aquasecurity",
+    "jacobpevans",
     "shellcheck",
     "yamllint"
   ],
