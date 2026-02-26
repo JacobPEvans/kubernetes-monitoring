@@ -22,6 +22,8 @@
       "matchManagers": ["github-actions"],
       "matchPackagePrefixes": ["aquasecurity/", "googleapis/"],
       "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "github-actions-vetted",
+      "groupSlug": "github-actions-vetted",
       "automerge": true,
       "automergeType": "squash"
     },
