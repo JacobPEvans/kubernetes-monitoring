@@ -5,6 +5,8 @@ metadata:
   namespace: monitoring
   labels:
     app: otel-collector
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/component: collector
 spec:
   serviceName: otel-collector
   replicas: 1
@@ -15,8 +17,12 @@ spec:
     metadata:
       labels:
         app: otel-collector
+        app.kubernetes.io/name: otel-collector
+        app.kubernetes.io/component: collector
     spec:
       priorityClassName: monitoring-critical
+      # runAsNonRoot omitted: container reads root-owned hostPath volumes
+      # (/var/log/pods, /var/lib/docker/containers) which require root UID.
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:latest
@@ -49,6 +55,10 @@ spec:
             - name: docker-containers
               mountPath: /var/lib/docker/containers
               readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
           resources:
             requests:
               memory: "256Mi"

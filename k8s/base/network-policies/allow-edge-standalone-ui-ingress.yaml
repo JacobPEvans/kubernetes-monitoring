@@ -1,0 +1,17 @@
+---
+# Allow external access to Cribl Edge Standalone UI via NodePort :30910.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-edge-standalone-ui-ingress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: cribl-edge-standalone
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 9000
+          protocol: TCP

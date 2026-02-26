@@ -5,6 +5,8 @@ metadata:
   namespace: monitoring
   labels:
     app: cribl-stream-standalone
+    app.kubernetes.io/name: cribl-stream-standalone
+    app.kubernetes.io/component: stream-processor
 spec:
   serviceName: cribl-stream-standalone
   replicas: 1
@@ -15,8 +17,14 @@ spec:
     metadata:
       labels:
         app: cribl-stream-standalone
+        app.kubernetes.io/name: cribl-stream-standalone
+        app.kubernetes.io/component: stream-processor
     spec:
       priorityClassName: monitoring-high
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 8097
+        fsGroup: 8097
       containers:
         - name: cribl-stream
           image: cribl/cribl:latest
@@ -80,6 +88,10 @@ spec:
             - name: cribl-config
               mountPath: /var/tmp/cribl-config
               readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
           resources:
             requests:
               memory: "1Gi"

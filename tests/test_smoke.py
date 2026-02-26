@@ -4,12 +4,28 @@ These tests verify the cluster state without sending any telemetry data.
 Fast and safe to run at any time.
 """
 
-import subprocess
-import time
-
 import pytest
-import requests
-from conftest import CONTEXT, NAMESPACE, STATEFULSETS, kubectl_json, port_forward_get
+from conftest import (
+    PF_EDGE_HEALTH,
+    PF_OTEL_HEALTH,
+    PF_STREAM_HEALTH,
+    STATEFULSETS,
+    kubectl_json,
+    port_forward_get,
+)
+
+EXPECTED_NETWORK_POLICIES = [
+    "default-deny-all",
+    "allow-dns-egress",
+    "allow-otel-ingress",
+    "allow-otel-egress",
+    "allow-edge-managed-egress",
+    "allow-edge-standalone-egress",
+    "allow-edge-standalone-ui-ingress",
+    "allow-stream-ingress",
+    "allow-stream-egress",
+    "allow-stream-ui-ingress",
+]
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -77,45 +93,8 @@ class TestOtelCollectorHealth:
         The otel-collector image is distroless (no shell or curl), so we use
         kubectl port-forward and requests from the test host instead.
         """
-        proc = subprocess.Popen(
-            [
-                "kubectl",
-                "--context",
-                CONTEXT,
-                "-n",
-                NAMESPACE,
-                "port-forward",
-                "statefulset/otel-collector",
-                "13133:13133",
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        try:
-            start_time = time.time()
-            last_error = None
-            timeout_seconds = 10
-            while time.time() - start_time < timeout_seconds:
-                if proc.poll() is not None:
-                    pytest.fail(
-                        "kubectl port-forward process exited before health check; "
-                        "port-forward may have failed to start."
-                    )
-                try:
-                    resp = requests.get("http://localhost:13133/", timeout=2)
-                    assert resp.status_code == 200, f"Health endpoint returned {resp.status_code}"
-                    break
-                except requests.exceptions.ConnectionError as exc:
-                    last_error = exc
-                    time.sleep(0.5)
-            else:
-                pytest.fail(
-                    f"Timed out after {timeout_seconds}s waiting for OTEL Collector "
-                    f"health endpoint via port-forward: {last_error}"
-                )
-        finally:
-            proc.terminate()
-            proc.wait()
+        resp = port_forward_get("otel-collector", 13133, PF_OTEL_HEALTH)
+        assert resp.status_code == 200, f"OTEL Collector health endpoint returned {resp.status_code}"
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -125,10 +104,28 @@ class TestCriblHealth:
 
         Cribl Stream API is on port 9000 (not 9420 which is only used by Cribl Edge).
         """
-        resp = port_forward_get("cribl-stream-standalone", 9000, 19420, path="/api/v1/health")
+        resp = port_forward_get("cribl-stream-standalone", 9000, PF_STREAM_HEALTH, path="/api/v1/health")
         assert resp.status_code == 200, f"Cribl Stream health returned {resp.status_code}: {resp.text[:200]}"
 
     def test_cribl_edge_standalone_health(self):
         """Cribl Edge Standalone /api/v1/health should return 200 via port-forward."""
-        resp = port_forward_get("cribl-edge-standalone", 9420, 19421, path="/api/v1/health")
+        resp = port_forward_get("cribl-edge-standalone", 9420, PF_EDGE_HEALTH, path="/api/v1/health")
         assert resp.status_code == 200, f"Cribl Edge health returned {resp.status_code}: {resp.text[:200]}"
+
+
+@pytest.mark.usefixtures("cluster_ready")
+class TestNetworkPolicies:
+    @pytest.mark.parametrize("name", EXPECTED_NETWORK_POLICIES)
+    def test_network_policy_exists(self, name):
+        """Each expected NetworkPolicy should exist in the monitoring namespace."""
+        data = kubectl_json("get", "networkpolicy", name)
+        assert data["metadata"]["name"] == name
+
+
+@pytest.mark.usefixtures("cluster_ready")
+class TestPodDisruptionBudgets:
+    @pytest.mark.parametrize("name", STATEFULSETS)
+    def test_pdb_exists(self, name):
+        """Each StatefulSet should have a corresponding PodDisruptionBudget."""
+        data = kubectl_json("get", "pdb", name)
+        assert data["metadata"]["name"] == name

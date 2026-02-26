@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - default-deny.yaml
+  - allow-dns.yaml
+  - allow-otel-ingress.yaml
+  - allow-otel-egress.yaml
+  - allow-edge-managed-egress.yaml
+  - allow-edge-standalone-egress.yaml
+  - allow-edge-standalone-ui-ingress.yaml
+  - allow-stream-ingress.yaml
+  - allow-stream-egress.yaml
+  - allow-stream-ui-ingress.yaml

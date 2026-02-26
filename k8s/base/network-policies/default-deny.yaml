@@ -1,0 +1,13 @@
+---
+# Default deny all ingress and egress in the monitoring namespace.
+# Explicit allow policies below open only what is needed.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: monitoring
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

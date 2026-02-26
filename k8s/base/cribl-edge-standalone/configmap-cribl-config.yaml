@@ -17,7 +17,7 @@ data:
     while [ $RETRIES -lt $MAX_RETRIES ]; do
       AUTH=$(curl -sf -X POST http://127.0.0.1:9420/api/v1/auth/login \
         -H 'Content-Type: application/json' \
-        -d '{"username":"admin","password":"admin"}' 2>/dev/null | \
+        -d '{"username":"admin","password":"'"${CRIBL_EDGE_PASSWORD:-admin}"'"}' 2>/dev/null | \
         sed 's/.*"token":"\([^"]*\)".*/\1/')
       if [ -n "$AUTH" ]; then
         break

@@ -5,6 +5,8 @@ metadata:
   namespace: monitoring
   labels:
     app: cribl-edge-standalone
+    app.kubernetes.io/name: cribl-edge-standalone
+    app.kubernetes.io/component: edge-collector
 spec:
   serviceName: cribl-edge-standalone
   replicas: 1
@@ -15,8 +17,12 @@ spec:
     metadata:
       labels:
         app: cribl-edge-standalone
+        app.kubernetes.io/name: cribl-edge-standalone
+        app.kubernetes.io/component: edge-collector
     spec:
       priorityClassName: monitoring-high
+      # runAsNonRoot omitted: container reads user-owned hostPath volumes
+      # (PLACEHOLDER_HOME_DIR/.claude, logs) which require the host user's UID.
       containers:
         - name: cribl-edge
           image: cribl/cribl:latest
@@ -30,6 +36,12 @@ spec:
           env:
             - name: CRIBL_DIST_MODE
               value: "edge"
+            - name: CRIBL_EDGE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cribl-edge-admin
+                  key: password
+                  optional: true
             - name: CLAUDE_HOME
               value: "/home/claude"
             - name: CRIBL_EDGE_API_HOST
@@ -71,6 +83,10 @@ spec:
             - name: pack-source
               mountPath: /packs
               readOnly: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
           resources:
             requests:
               memory: "1Gi"

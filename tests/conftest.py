@@ -14,6 +14,15 @@ CONTEXT = os.environ.get("KUBE_CONTEXT", "orbstack")
 NAMESPACE = os.environ.get("KUBE_NAMESPACE", "monitoring")
 OTEL_GRPC_ENDPOINT = "localhost:30317"
 OTEL_HTTP_ENDPOINT = "http://localhost:30318"
+
+# Local port-forward ports — each test uses a unique port to avoid collisions.
+PF_OTEL_HEALTH = 13133
+PF_STREAM_HEALTH = 19420
+PF_EDGE_HEALTH = 19421
+PF_STREAM_INPUTS_A4 = 19422
+PF_STREAM_INPUTS_A5 = 19423
+PF_STREAM_OUTPUTS = 19424
+
 STATEFULSETS = [
     "otel-collector",
     "cribl-edge-managed",

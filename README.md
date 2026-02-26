@@ -72,7 +72,8 @@ kubernetes-monitoring/
 │   │   ├── otel-collector/
 │   │   ├── cribl-edge-managed/
 │   │   ├── cribl-edge-standalone/
-│   │   ├── cribl-stream/
+│   │   ├── cribl-stream-standalone/
+│   │   ├── network-policies/
 │   │   └── ai-jobs/
 │   └── overlays/
 │       └── local/               # Generated at deploy time (gitignored)
@@ -81,6 +82,7 @@ kubernetes-monitoring/
 │   └── gemini-cli/              # Ephemeral Gemini CLI container
 ├── scripts/
 │   ├── deploy.sh                # Full deployment script
+│   ├── deploy-doppler.sh        # Deploy with secrets from Doppler
 │   └── generate-overlay.sh      # Overlay generator
 ├── tests/                       # Integration and smoke tests
 ├── packs/                       # Cribl Edge pack files

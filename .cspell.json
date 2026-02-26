@@ -46,6 +46,7 @@
     "passthru",
     "pipefail",
     "pmset",
+    "aquasecurity",
     "shellcheck",
     "yamllint"
   ],

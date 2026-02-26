@@ -4,7 +4,7 @@
 
 local NOTIFY_TITLE = "K8s Monitoring"
 local k8sDir = os.getenv("K8S_MONITORING_DIR") or (os.getenv("HOME") .. "/git/kubernetes-monitoring/main")
-local stateFile = "/tmp/kubernetes-monitoring-power-state"
+local stateFile = (os.getenv("HOME") or "/tmp") .. "/.cache/kubernetes-monitoring/power-state"
 
 local function isLowPowerMode()
   local out = hs.execute("pmset -g 2>/dev/null | grep powermode | awk '{print $2}'")
@@ -25,6 +25,8 @@ local function readState()
 end
 
 local function writeState(state)
+  -- Ensure cache directory exists before writing
+  hs.execute("mkdir -p '" .. stateFile:match("^(.+)/[^/]+$") .. "'")
   local f, err = io.open(stateFile, "w")
   if not f then
     hs.notify.show(NOTIFY_TITLE, "Error writing state", tostring(err))

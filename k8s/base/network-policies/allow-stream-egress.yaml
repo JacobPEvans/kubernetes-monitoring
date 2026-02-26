@@ -1,0 +1,17 @@
+---
+# Allow Cribl Stream Standalone to forward events to Splunk HEC (external LAN host).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-stream-egress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: cribl-stream-standalone
+  policyTypes:
+    - Egress
+  egress:
+    - ports:
+        - port: 8088  # Splunk HEC
+          protocol: TCP

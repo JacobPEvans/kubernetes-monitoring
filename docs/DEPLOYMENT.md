@@ -71,7 +71,7 @@ make deploy-doppler
 
 ## OTLP Telemetry
 
-The OTEL Collector forwards telemetry via gRPC to `cribl-edge-managed:4317`. The managed edge fleet has an `open_telemetry` source configured with `host: 0.0.0.0`, `port: 4317`, `protocol: grpc` in Cribl Cloud.
+The OTEL Collector forwards telemetry via gRPC to `cribl-stream-standalone:4317`. The standalone Stream instance has an `open_telemetry` source configured on port 4317.
 
 ## Verify
 
@@ -79,8 +79,9 @@ The OTEL Collector forwards telemetry via gRPC to `cribl-edge-managed:4317`. The
 # Check all pods are Running
 make status
 
-# Check OTEL Collector health
-kubectl exec -n monitoring statefulset/otel-collector -- curl -s http://localhost:13133/
+# Check OTEL Collector health (distroless image — use port-forward, not kubectl exec)
+kubectl port-forward -n monitoring statefulset/otel-collector 13133:13133 &
+curl -s http://localhost:13133/ && kill %1
 
 # Check Cribl Edge managed logs
 kubectl logs -n monitoring statefulset/cribl-edge-managed --tail=10
@@ -91,8 +92,8 @@ open http://localhost:30910
 # Check Cribl Stream standalone UI
 open http://localhost:30900
 
-# Verify OTEL can reach managed edge OTLP source (gRPC health check)
-kubectl exec -n monitoring statefulset/otel-collector -- curl -sf http://cribl-edge-managed:9420/api/v1/health
+# Verify Cribl Stream standalone health (OTEL target)
+kubectl exec -n monitoring statefulset/cribl-stream-standalone -- curl -sf http://localhost:9000/api/v1/health
 ```
 
 ## Update

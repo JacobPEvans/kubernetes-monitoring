@@ -6,3 +6,4 @@ resources:
   - configmap-cribl-config.yaml
   - service.yaml
   - service-ui.yaml
+  - pdb.yaml

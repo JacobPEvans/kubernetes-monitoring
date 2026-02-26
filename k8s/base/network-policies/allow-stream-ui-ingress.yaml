@@ -1,0 +1,17 @@
+---
+# Allow external access to Cribl Stream Standalone UI via NodePort :30900.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-stream-ui-ingress
+  namespace: monitoring
+spec:
+  podSelector:
+    matchLabels:
+      app: cribl-stream-standalone
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - port: 9000
+          protocol: TCP

@@ -47,11 +47,22 @@ else
   echo "  SKIPPED: cribl-stream-admin (CRIBL_STREAM_PASSWORD not set)"
 fi
 
+# Cribl Edge standalone admin password
+if [ -n "${CRIBL_EDGE_PASSWORD:-}" ]; then
+  kubectl --context "$CONTEXT" create secret generic cribl-edge-admin \
+    --namespace "$NAMESPACE" \
+    --from-literal=password="$CRIBL_EDGE_PASSWORD" \
+    --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
+  echo "  Created: cribl-edge-admin"
+else
+  echo "  SKIPPED: cribl-edge-admin (CRIBL_EDGE_PASSWORD not set, using default)"
+fi
+
 # Splunk HEC config (standalone edge)
 # Derive HEC URL from SPLUNK_NETWORK terraform output (JSON array, e.g. '["192.168.0.200"]')
 SPLUNK_HEC_URL=""
 if [ -n "${SPLUNK_NETWORK:-}" ]; then
-  SPLUNK_IP=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])[0])" "$SPLUNK_NETWORK" 2>/dev/null || true)
+  SPLUNK_IP=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])[0])" "$SPLUNK_NETWORK" 2>/dev/null || { echo "  WARNING: Failed to parse SPLUNK_NETWORK JSON: '$SPLUNK_NETWORK'" >&2; true; })
   # Use direct IP — OrbStack's host.orb.internal proxy strips Authorization headers,
   # causing 403 "Invalid token" on all authenticated POSTs.
   [ -n "$SPLUNK_IP" ] && SPLUNK_HEC_URL="https://${SPLUNK_IP}:8088/services/collector"
@@ -83,46 +94,13 @@ else
 fi
 echo ""
 
-# Step 3: Clean up old resources from previous deployment model
-# Delete old Deployments (now StatefulSets) and old cribl-stream (now split)
-# Delete non-headless services (clusterIP cannot be changed in-place to None)
-# Must run before apply to free NodePort 30900 for cribl-stream-standalone-ui
-echo "--- Step 3: Cleaning up old resources ---"
-# Delete ghost cribl-stream-managed (no manifest, crash-looping)
-for resource_type in statefulset deployment; do
-  if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete "$resource_type" cribl-stream-managed 2>/dev/null; then
-    echo "  Deleted: $resource_type/cribl-stream-managed"
-  fi
-done
-if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream-managed 2>/dev/null; then
-  echo "  Deleted: service/cribl-stream-managed"
-fi
-for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream cribl-stream-standalone; do
-  if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment "$name" 2>/dev/null; then
-    echo "  Deleted: deployment/$name"
-  fi
-done
-# Delete non-headless ClusterIP services (StatefulSets require headless)
-for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do
-  cluster_ip=$(kubectl --context "$CONTEXT" -n "$NAMESPACE" get service "$name" -o jsonpath='{.spec.clusterIP}' 2>/dev/null || true)
-  if [[ -n "$cluster_ip" && "$cluster_ip" != "None" ]]; then
-    kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service "$name" 2>/dev/null
-    echo "  Deleted: service/$name (non-headless, will recreate)"
-  fi
-done
-# Delete legacy service names from pre-split era
-if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream cribl-stream-ui 2>/dev/null; then
-  echo "  Deleted: service/cribl-stream, service/cribl-stream-ui"
-fi
-echo ""
-
-# Step 4: Apply kustomize
-echo "--- Step 4: Applying kustomize overlay ---"
+# Step 3: Apply kustomize
+echo "--- Step 3: Applying kustomize overlay ---"
 kubectl --context "$CONTEXT" apply -k "$REPO_ROOT/k8s/overlays/local/"
 echo ""
 
-# Step 5: Wait for rollouts
-echo "--- Step 5: Waiting for rollouts ---"
+# Step 4: Wait for rollouts
+echo "--- Step 4: Waiting for rollouts ---"
 declare -A timeouts=(
   [otel-collector]=120s
   [cribl-edge-managed]=120s
@@ -136,7 +114,7 @@ for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream
 done
 echo ""
 
-# Step 6: Print endpoints
+# Step 5: Print endpoints
 echo "=== Deployment Complete ==="
 echo ""
 echo "Service Endpoints:"

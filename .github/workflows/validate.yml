@@ -2,10 +2,26 @@ name: Validate
 
 on:
   push:
-    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', '.yamllint.yml', 'docker/**', 'tests/**']
+    paths:
+      - 'k8s/**'
+      - 'scripts/**'
+      - 'Makefile'
+      - '.pre-commit-config.yaml'
+      - '.yamllint.yml'
+      - 'docker/**'
+      - 'tests/**'
+      - 'pyproject.toml'
   pull_request:
     branches: [main]
-    paths: ['k8s/**', 'scripts/**', 'Makefile', '.pre-commit-config.yaml', '.yamllint.yml', 'docker/**', 'tests/**']
+    paths:
+      - 'k8s/**'
+      - 'scripts/**'
+      - 'Makefile'
+      - '.pre-commit-config.yaml'
+      - '.yamllint.yml'
+      - 'docker/**'
+      - 'tests/**'
+      - 'pyproject.toml'
 
 permissions:
   contents: read
@@ -40,6 +56,39 @@ jobs:
       - name: Install kubeconform
         uses: bmuschko/setup-kubeconform@v1
       - uses: pre-commit/action@v3.0.1
+
+  unit-tests:
+    name: Unit tests (no cluster required)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Install test dependencies
+        run: pip install -r tests/requirements.txt
+      - name: Run unit tests
+        run: pytest tests/test_unit.py -v
+
+  scan-dockerfiles:
+    name: Scan Dockerfiles for vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Scan claude-code Dockerfile
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: config
+          scan-ref: docker/claude-code/
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+      - name: Scan gemini-cli Dockerfile
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: config
+          scan-ref: docker/gemini-cli/
+          severity: HIGH,CRITICAL
+          exit-code: '0'
 
   test-deps:
     name: Verify test dependencies
