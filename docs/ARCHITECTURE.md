@@ -27,7 +27,7 @@ flowchart LR
 | Arrow | Path | Test(s) | File |
 |-------|------|---------|------|
 | A1 | Client → OTEL Collector | `test_send_trace_grpc`, `test_send_trace_http` | test_pipeline.py |
-| A2 | Host FS → Edge Standalone | (file mount, verified by pod health) | test_smoke.py |
+| A2 | Host FS → Edge Standalone | `test_claude_home_mount_accessible`, `test_sentinel_file_visible_in_edge_pod`, `test_edge_file_monitor_config_path`, `test_edge_file_monitor_picks_up_sentinel` | test_forwarding.py |
 | A3 | Host FS → Edge Managed | (file mount, verified by pod health) | test_smoke.py |
 | A4 | OTEL Collector → Cribl Stream | `test_no_export_errors_after_send`, `test_cribl_stream_received_otlp_data` | test_forwarding.py |
 | A5 | Edge Standalone → Cribl Stream | `test_edge_to_stream_connectivity`, `test_cribl_stream_inputs_api_reachable` | test_forwarding.py |

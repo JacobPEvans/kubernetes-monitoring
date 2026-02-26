@@ -1,14 +1,18 @@
 """Tier 3: Forwarding verification tests.
 
 These tests verify data flows correctly through the pipeline:
+  A2: Host Filesystem → Cribl Edge Standalone (file monitor)
   A4: OTEL Collector → Cribl Stream Standalone (gRPC :4317)
   A5: Cribl Edge Standalone → Cribl Stream Standalone (HTTP :10080)
   A7: Cribl Stream Standalone → Splunk HEC (:8088 HEC)
 """
 
+import json
 import subprocess
 import time
 import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 from conftest import (
@@ -199,8 +203,9 @@ class TestStreamToSplunkForwarding:
         output, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone",
             "--",
-            "cat",
-            "/opt/cribl/local/cribl/outputs.yml",
+            "sh",
+            "-c",
+            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cribl/outputs.yml",
         )
         assert url_present_in_outputs_yaml(secret_url, output), (
             f"Secret URL '{secret_url}' not found as 'url:' value in Cribl Stream outputs.yml "
@@ -232,4 +237,113 @@ class TestStreamToSplunkForwarding:
         assert flowing, (
             "Expected _raw stats with outBytes > 0 after sending trace "
             "(data physically sent to splunk-hec), found none in last 100 log lines."
+        )
+
+
+# ---------------------------------------------------------------------------
+# Fixture for Claude Code log pipeline tests
+# ---------------------------------------------------------------------------
+
+_CLAUDE_TEST_DIR = Path.home() / ".claude/projects/-test-claude-pipeline"
+
+
+@pytest.fixture
+def sentinel_claude_file():
+    """Write a unique sentinel .jsonl to ~/.claude/projects/-test-claude-pipeline/ on the host.
+
+    Yields (path, sentinel_id). Cleans up after the test.
+    The edge pod mounts this directory via hostPath, so the file appears at
+    /home/claude/.claude/projects/-test-claude-pipeline/ inside the pod.
+    """
+    _CLAUDE_TEST_DIR.mkdir(parents=True, exist_ok=True)
+    sentinel_id = f"PIPELINE_TEST_{uuid.uuid4().hex[:12]}"
+    sentinel_file = _CLAUDE_TEST_DIR / f"test-{sentinel_id}.jsonl"
+    sentinel_data = {
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "sentinel": sentinel_id,
+        "level": "info",
+        "message": "Claude Code log pipeline test event",
+    }
+    sentinel_file.write_text(json.dumps(sentinel_data) + "\n")
+    yield sentinel_file, sentinel_id
+    try:
+        sentinel_file.unlink()
+    except FileNotFoundError:
+        pass
+    try:
+        _CLAUDE_TEST_DIR.rmdir()  # removes dir only if empty
+    except OSError:
+        pass
+
+
+@pytest.mark.usefixtures("cluster_ready")
+class TestClaudeCodeLogPipeline:
+    """Verify .claude/ session log files are picked up by the edge file monitor (arrow A2).
+
+    The file monitoring path (A2: Host FS → Edge Standalone) is separate from the
+    OTLP path (A1/A4) tested by other classes. These tests confirm:
+      1. The hostPath volume mount makes ~/.claude/projects/ visible inside the edge pod.
+      2. The FileMonitor input (cc-edge-claude-code) is configured with the correct path.
+      3. A new .jsonl file written on the host is detected by the edge within one poll interval.
+    """
+
+    def test_claude_home_mount_accessible(self):
+        """Edge pod can list host ~/.claude/projects/ via the hostPath volume mount."""
+        output, returncode = _kubectl_exec_no_fail(
+            "statefulset/cribl-edge-standalone",
+            "--",
+            "ls",
+            "/home/claude/.claude/projects/",
+        )
+        assert returncode == 0, (
+            f"hostPath mount /home/claude/.claude/projects/ not accessible in edge pod (exit {returncode})"
+        )
+        assert output.strip(), "Expected non-empty listing of .claude/projects/ inside edge pod"
+
+    def test_sentinel_file_visible_in_edge_pod(self, sentinel_claude_file):
+        """A .jsonl file written to host ~/.claude/projects/ is immediately readable inside the edge pod."""
+        sentinel_path, sentinel_id = sentinel_claude_file
+        pod_path = f"/home/claude/.claude/projects/-test-claude-pipeline/{sentinel_path.name}"
+        output, returncode = _kubectl_exec_no_fail(
+            "statefulset/cribl-edge-standalone",
+            "--",
+            "cat",
+            pod_path,
+        )
+        assert returncode == 0, (
+            f"Sentinel file not readable inside edge pod at {pod_path} (exit {returncode}). "
+            "Check that the hostPath volume is correctly mounted."
+        )
+        assert sentinel_id in output, f"Sentinel ID {sentinel_id!r} not found in pod file content: {output!r}"
+
+    def test_edge_file_monitor_config_path(self):
+        """Edge FileMonitor input is configured to monitor /home/claude/.claude/projects/."""
+        output, returncode = _kubectl_exec_no_fail(
+            "statefulset/cribl-edge-standalone",
+            "--",
+            "cat",
+            "/opt/cribl/local/cc-edge-claude-code/inputs.yml",
+        )
+        assert returncode == 0, f"Could not read edge pack inputs.yml (exit {returncode}). Pack may not be installed."
+        assert "/home/claude/.claude/projects/" in output, (
+            f"Expected '/home/claude/.claude/projects/' in edge inputs.yml, got:\n{output}"
+        )
+        assert "*.jsonl" in output, f"Expected '*.jsonl' file pattern in edge inputs.yml, got:\n{output}"
+
+    def test_edge_file_monitor_picks_up_sentinel(self, sentinel_claude_file):
+        """Edge FileMonitor logs a 'collector added' entry for a new .jsonl file within 30s.
+
+        The FileMonitor polls every 10 seconds (interval: 10). A new file written on the
+        host should appear in edge logs within one poll cycle plus processing time.
+        """
+        sentinel_path, _ = sentinel_claude_file
+        deadline = time.time() + 35
+        while time.time() < deadline:
+            logs = kubectl("logs", "statefulset/cribl-edge-standalone", "--since=2m")
+            if "-test-claude-pipeline" in logs and "FileMonitor collector added" in logs:
+                return
+            time.sleep(5)
+        pytest.fail(
+            f"Edge FileMonitor did not log 'collector added' for {sentinel_path.name} within 35s. "
+            "Check that the edge pack is installed and the hostPath volume is mounted correctly."
         )
