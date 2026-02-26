@@ -200,7 +200,7 @@ class TestStreamToSplunkForwarding:
             "statefulset/cribl-stream-standalone",
             "--",
             "cat",
-            "/opt/cribl/local/cribl/outputs.yml",
+            "/opt/cribl/data/local/cribl/outputs.yml",
         )
         assert url_present_in_outputs_yaml(secret_url, output), (
             f"Secret URL '{secret_url}' not found as 'url:' value in Cribl Stream outputs.yml "
