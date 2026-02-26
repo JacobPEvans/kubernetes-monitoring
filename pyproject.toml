@@ -8,6 +8,7 @@ extraPaths = ["tests"]
 pythonpath = ["tests"]
 
 [tool.ruff]
+# py314 not yet supported in ruff v0.9.0; bump to py314 once ruff adds support
 target-version = "py313"
 line-length = 120
 
