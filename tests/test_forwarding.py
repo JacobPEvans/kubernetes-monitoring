@@ -199,8 +199,9 @@ class TestStreamToSplunkForwarding:
         output, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone",
             "--",
-            "cat",
-            "/opt/cribl/data/local/cribl/outputs.yml",
+            "sh",
+            "-c",
+            "cat ${CRIBL_VOLUME_DIR}/local/cribl/outputs.yml",
         )
         assert url_present_in_outputs_yaml(secret_url, output), (
             f"Secret URL '{secret_url}' not found as 'url:' value in Cribl Stream outputs.yml "

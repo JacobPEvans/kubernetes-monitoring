@@ -65,7 +65,7 @@ spec:
                   key: url
                   optional: true
             - name: CRIBL_BEFORE_START_CMD_1
-              value: "mkdir -p ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cribl/pipelines"
+              value: "mkdir -p ${CRIBL_VOLUME_DIR}/local/cribl/pipelines"
             - name: CRIBL_BEFORE_START_CMD_2
               value: |
                 if [ -n "${SPLUNK_HEC_URL:-}" ] && [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
@@ -73,15 +73,15 @@ spec:
                     -e "s|__SPLUNK_HEC_URL__|$SPLUNK_HEC_URL|g" \
                     -e "s|__SPLUNK_HEC_TOKEN__|$SPLUNK_HEC_TOKEN|g" \
                     /var/tmp/cribl-config/outputs.yml \
-                    > ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cribl/outputs.yml
+                    > ${CRIBL_VOLUME_DIR}/local/cribl/outputs.yml
                 else
                   echo "SPLUNK_HEC_URL or SPLUNK_HEC_TOKEN not set; copying outputs.yml without substitution" >&2
-                  cp /var/tmp/cribl-config/outputs.yml ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cribl/outputs.yml
+                  cp /var/tmp/cribl-config/outputs.yml ${CRIBL_VOLUME_DIR}/local/cribl/outputs.yml
                 fi
             - name: CRIBL_BEFORE_START_CMD_3
-              value: "cp /var/tmp/cribl-config/inputs.yml ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cribl/inputs.yml"
+              value: "cp /var/tmp/cribl-config/inputs.yml ${CRIBL_VOLUME_DIR}/local/cribl/inputs.yml"
             - name: CRIBL_BEFORE_START_CMD_4
-              value: "cp /var/tmp/cribl-config/pipelines-route.yml ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cribl/pipelines/route.yml"
+              value: "cp /var/tmp/cribl-config/pipelines-route.yml ${CRIBL_VOLUME_DIR}/local/cribl/pipelines/route.yml"
           volumeMounts:
             - name: cribl-data
               mountPath: /opt/cribl/data
