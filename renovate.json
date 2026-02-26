@@ -9,11 +9,19 @@
       "groupSlug": "all-dependencies"
     },
     {
-      "description": "Automerge official GitHub Actions (including major)",
+      "description": "Tier 1: Automerge own and official GitHub Actions (all update types)",
       "matchManagers": ["github-actions"],
-      "matchPackagePrefixes": ["actions/"],
-      "groupName": "github-actions",
-      "groupSlug": "github-actions",
+      "matchPackagePrefixes": ["actions/", "jacobpevans/"],
+      "groupName": "github-actions-trusted",
+      "groupSlug": "github-actions-trusted",
+      "automerge": true,
+      "automergeType": "squash"
+    },
+    {
+      "description": "Tier 2: Automerge minor/patch from vetted well-known publishers",
+      "matchManagers": ["github-actions"],
+      "matchPackagePrefixes": ["aquasecurity/", "googleapis/"],
+      "matchUpdateTypes": ["minor", "patch"],
       "automerge": true,
       "automergeType": "squash"
     },
