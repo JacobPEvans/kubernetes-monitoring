@@ -97,12 +97,6 @@ done
 if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete service cribl-stream-managed 2>/dev/null; then
   echo "  Deleted: service/cribl-stream-managed"
 fi
-# Delete StatefulSets with new volumeClaimTemplates (cannot be updated in-place)
-for name in cribl-edge-standalone cribl-stream-standalone; do
-  if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete statefulset "$name" 2>/dev/null; then
-    echo "  Deleted: statefulset/$name (will recreate with volumeClaimTemplates)"
-  fi
-done
 for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream cribl-stream-standalone; do
   if kubectl --context "$CONTEXT" -n "$NAMESPACE" delete deployment "$name" 2>/dev/null; then
     echo "  Deleted: deployment/$name"
@@ -138,7 +132,7 @@ declare -A timeouts=(
 )
 
 for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do
-  kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status "statefulset/$name" --timeout="${timeouts[$name]}" || true
+  kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status "statefulset/$name" --timeout="${timeouts[$name]}"
 done
 echo ""
 

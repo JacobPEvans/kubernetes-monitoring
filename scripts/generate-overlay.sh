@@ -123,7 +123,7 @@ spec:
             name: cribl-edge-standalone-config
         - name: pack-source
           hostPath:
-            path: ${HOME_DIR}/git/kubernetes-monitoring/main/packs
+            path: ${REPO_ROOT}/packs
             type: DirectoryOrCreate
         - name: cribl-config-templates
           configMap:

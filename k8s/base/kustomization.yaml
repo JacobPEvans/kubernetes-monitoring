@@ -14,8 +14,6 @@ resources:
   - cribl-edge-standalone/
   # Cribl Stream (standalone leader with UI)
   - cribl-stream-standalone/
-  # AI job templates
-  - ai-jobs/
 
 labels:
   - pairs:
