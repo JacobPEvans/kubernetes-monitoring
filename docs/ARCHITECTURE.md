@@ -12,6 +12,8 @@ flowchart LR
     StreamStandalone["cribl-stream-standalone\nUI :30900"]
     SplunkHEC["Splunk HEC\n:8088 HEC"]
     CriblCloud["Cribl Cloud\n(external)"]
+    McpServer["cribl-mcp-server\nNodePort :30030"]
+    ClaudeCode["Claude Code\n(macOS)"]
 
     Client -->|"A1: OTLP gRPC/HTTP"| OtelCollector
     HostFS -->|"A2: file input"| EdgeStandalone
@@ -20,6 +22,8 @@ flowchart LR
     EdgeStandalone -->|"A5: HEC HTTPS"| SplunkHEC
     EdgeManaged -->|"A6: cloud-managed"| CriblCloud
     StreamStandalone -->|"A7: HEC HTTPS"| SplunkHEC
+    ClaudeCode -->|"A8: MCP HTTP :30030"| McpServer
+    McpServer -->|"A9: API HTTPS :443"| CriblCloud
 ```
 
 ## Test Coverage Map
@@ -33,3 +37,5 @@ flowchart LR
 | A5 | Edge Standalone → Splunk HEC | `test_edge_output_not_devnull`, `test_edge_file_input_active`, `test_file_events_reach_splunk_realtime` | test_forwarding.py |
 | A6 | Edge Managed → Cribl Cloud | Not locally testable (cloud-managed) | — |
 | A7 | Cribl Stream → Splunk HEC | `test_splunk_hec_output_healthy`,<br>`test_splunk_hec_health_endpoint`,<br>`test_splunk_hec_token_accepted`,<br>`test_splunk_hec_url_matches_secret`,<br>`test_cribl_stream_no_output_errors`,<br>`test_cribl_stream_events_flowing`,<br>`test_otlp_events_reach_splunk_realtime` | test_forwarding.py |
+| A8 | Claude Code → MCP Server | `test_mcp_initialize_returns_200`, `test_mcp_response_content_type`, `test_mcp_initialize_protocol_version` | test_smoke.py |
+| A9 | MCP Server → Cribl Cloud | Not locally testable (cloud-managed) | — |

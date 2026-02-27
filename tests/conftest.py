@@ -23,11 +23,15 @@ PF_STREAM_INPUTS_A4 = 19422
 PF_STREAM_INPUTS_A5 = 19423
 PF_STREAM_OUTPUTS = 19424
 
+# MCP server NodePort — accessed directly from macOS (not via port-forward).
+MCP_NODEPORT_URL = "http://localhost:30030/mcp"
+
 STATEFULSETS = [
     "otel-collector",
     "cribl-edge-managed",
     "cribl-edge-standalone",
     "cribl-stream-standalone",
+    "cribl-mcp-server",
 ]
 
 

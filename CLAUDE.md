@@ -29,7 +29,7 @@ Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 See [Architecture Diagram](docs/ARCHITECTURE.md) for the full data flow and test coverage map.
 
-Four StatefulSets in the monitoring namespace:
+Five StatefulSets in the monitoring namespace:
 
 | StatefulSet | Role | UI |
 |------------|------|-----|
@@ -37,6 +37,7 @@ Four StatefulSets in the monitoring namespace:
 | `cribl-edge-managed` | Cloud-managed edge, forwards to Cribl Cloud | None |
 | `cribl-edge-standalone` | Local edge with pack, forwards to Cribl Stream Standalone | :30910 |
 | `cribl-stream-standalone` | Local Stream leader with UI, outputs to Splunk HEC | :30900 |
+| `cribl-mcp-server` | Cribl Cloud MCP API server for Claude Code | :30030 |
 
 Directory layout:
 
