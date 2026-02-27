@@ -10,8 +10,8 @@ data:
         type: splunk_hec
         url: "__SPLUNK_HEC_URL__"
         token: "__SPLUNK_HEC_TOKEN__"
-        index: "claude"
-        source: "cribl-stream"
+        index: claude
+        source: cribl-stream
         sourcetype: "claude:code:session"
         rejectUnauthorized: false
         compress: true
