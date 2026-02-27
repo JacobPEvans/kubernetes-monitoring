@@ -4,6 +4,8 @@ These tests verify the cluster state without sending any telemetry data.
 Fast and safe to run at any time.
 """
 
+import json
+
 import pytest
 import requests
 from conftest import (
@@ -123,34 +125,73 @@ class TestCriblHealth:
         assert resp.status_code == 200, f"Cribl Edge health returned {resp.status_code}: {resp.text[:200]}"
 
 
+MCP_HEADERS = {
+    "Content-Type": "application/json",
+    "Accept": "application/json, text/event-stream",
+}
+
+MCP_INITIALIZE_PAYLOAD = {
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+        "protocolVersion": "2025-03-26",
+        "capabilities": {},
+        "clientInfo": {"name": "pytest", "version": "1.0"},
+    },
+    "id": 1,
+}
+
+
 @pytest.mark.usefixtures("cluster_ready")
 class TestMcpServerNodePort:
     """Verify the Cribl MCP server is reachable from macOS via NodePort :30030.
 
     These tests hit localhost:30030 directly — the same path Claude Code uses —
     NOT via kubectl port-forward. They guarantee that the NodePort routing works
-    and the MCP SSE protocol is responding correctly end-to-end.
+    and the MCP Streamable HTTP protocol (2025-03-26) is responding correctly.
+
+    The server uses POST-based Streamable HTTP transport (not the older GET/SSE
+    transport). Each request is a POST to /mcp with Content-Type: application/json
+    and Accept: application/json, text/event-stream.
     """
 
-    def _connect(self) -> requests.Response:
-        """Open a streaming GET to the MCP NodePort. Fails the test on connection error."""
+    def _post(self, payload: dict) -> requests.Response:
+        """POST a JSON-RPC message to the MCP NodePort. Fails the test on connection error."""
         try:
-            return requests.get(MCP_NODEPORT_URL, stream=True, timeout=(5, 5))
+            return requests.post(
+                MCP_NODEPORT_URL,
+                json=payload,
+                headers=MCP_HEADERS,
+                stream=True,
+                timeout=(5, 5),
+            )
         except requests.exceptions.ConnectionError as exc:
             pytest.fail(
                 f"Cannot connect to MCP server at {MCP_NODEPORT_URL} via NodePort. "
                 f"Is the cluster running? (make deploy-doppler)\n{exc}"
             )
 
-    def test_mcp_returns_200(self):
-        """MCP server NodePort :30030 should accept HTTP connections from macOS."""
-        resp = self._connect()
+    def _read_sse_data(self, resp: requests.Response) -> dict:
+        """Read the first SSE data event from a streaming response and parse as JSON."""
+        try:
+            for line in resp.iter_lines(decode_unicode=True):
+                if line.startswith("data: "):
+                    return json.loads(line[6:].strip())
+        except requests.exceptions.ReadTimeout:
+            pytest.fail(f"MCP server at {MCP_NODEPORT_URL} did not respond within 5s.")
+        finally:
+            resp.close()
+        pytest.fail("MCP server returned no SSE data event.")
+
+    def test_mcp_initialize_returns_200(self):
+        """MCP server should accept initialize requests with 200 OK."""
+        resp = self._post(MCP_INITIALIZE_PAYLOAD)
         assert resp.status_code == 200, f"MCP server returned {resp.status_code} — expected 200"
         resp.close()
 
-    def test_mcp_sse_content_type(self):
+    def test_mcp_response_content_type(self):
         """MCP endpoint should respond with SSE content-type (text/event-stream)."""
-        resp = self._connect()
+        resp = self._post(MCP_INITIALIZE_PAYLOAD)
         content_type = resp.headers.get("content-type", "")
         resp.close()
         assert "text/event-stream" in content_type, (
@@ -158,39 +199,26 @@ class TestMcpServerNodePort:
             f"The MCP server may be misconfigured or not fully started."
         )
 
-    def test_mcp_sse_announces_session_endpoint(self):
-        """MCP server should immediately announce a session endpoint via the SSE stream.
+    def test_mcp_initialize_protocol_version(self):
+        """MCP server should negotiate the 2025-03-26 protocol version.
 
-        The MCP SSE transport works as follows:
-          1. Claude Code opens GET /mcp → receives an SSE stream
-          2. Server sends: data: /mcp/sessions/<id>   (session endpoint)
-          3. Claude Code POSTs JSON-RPC messages to that session URL
+        The MCP Streamable HTTP transport (2025-03-26) works as follows:
+          1. Client POSTs initialize to /mcp with Accept: application/json, text/event-stream
+          2. Server returns 200 with SSE stream
+          3. SSE stream contains a message event with the initialize result
 
-        This test verifies step 2 — that the server announces the session endpoint
-        within 5 seconds of the connection being established.
+        This test verifies the server correctly handles the handshake and returns
+        a valid protocol version and server info.
         """
-        resp = self._connect()
-        data_line = None
-        try:
-            for line in resp.iter_lines(decode_unicode=True):
-                if line.startswith("data: "):
-                    data_line = line[6:].strip()
-                    break
-        except requests.exceptions.ReadTimeout:
-            pytest.fail(
-                f"MCP server at {MCP_NODEPORT_URL} did not send a session endpoint "
-                f"event within 5s. The server may be starting up or misconfigured."
-            )
-        finally:
-            resp.close()
+        resp = self._post(MCP_INITIALIZE_PAYLOAD)
+        data = self._read_sse_data(resp)
 
-        assert data_line is not None, (
-            "MCP server opened SSE stream but sent no data event. "
-            "Expected a session endpoint announcement (e.g. /mcp/sessions/<id>)."
+        assert "result" in data, f"Expected 'result' in MCP initialize response, got: {data}"
+        result = data["result"]
+        assert result.get("protocolVersion") == "2025-03-26", (
+            f"Expected protocolVersion '2025-03-26', got: '{result.get('protocolVersion')}'"
         )
-        assert data_line.startswith("/"), (
-            f"Expected session endpoint to be a relative path (e.g. /mcp/sessions/...), got: '{data_line}'"
-        )
+        assert "serverInfo" in result, f"Expected 'serverInfo' in result, got: {result}"
 
 
 @pytest.mark.usefixtures("cluster_ready")
