@@ -14,12 +14,13 @@ data:
     will show a gap — a clear signal that the pipeline is broken.
 
     Flow: heartbeat pod → otel-collector:4317 (OTLP gRPC)
-          → cribl-stream-standalone:8088 (HEC, via Stream single-mode pipeline)
+          → cribl-stream-standalone:4317 (OTLP, via Stream single-mode pipeline)
           → Splunk HEC
     Verification: Stream stats API outBytes before vs. after.
     """
     import sys
     import time
+    import uuid
 
     import requests
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -38,16 +39,16 @@ data:
         Response shape (Cribl /api/v1/system/stats):
           {"result": [{"id": "...", "outBytes": N, ...}, ...]}
 
-        Falls back to summing all numeric values under keys containing both
-        'out' and 'yte' (case-insensitive) if the expected shape is absent.
+        Returns 0 if the expected shape is absent. Exits with code 1 if the
+        stats API is unreachable.
         """
         try:
             resp = requests.get(STREAM_STATS_URL, timeout=10)
             resp.raise_for_status()
             data = resp.json()
         except Exception as exc:
-            print(f"WARN: Could not fetch Stream stats: {exc}", file=sys.stderr)
-            return 0
+            print(f"ERROR: Could not fetch Stream stats, failing heartbeat: {exc}", file=sys.stderr)
+            sys.exit(1)
 
         # Expected shape: {"result": [...]}
         items = data.get("result", [])
@@ -62,22 +63,7 @@ data:
             # outBytes may be zero legitimately; still return it
             return total
 
-        # Fallback: sum any numeric value under keys containing 'out' and 'yte'
-        def _extract_out_bytes(obj) -> int:
-            total = 0
-            if isinstance(obj, dict):
-                for k, v in obj.items():
-                    k_lower = k.lower()
-                    if "out" in k_lower and "yte" in k_lower and isinstance(v, (int, float)):
-                        total += int(v)
-                    else:
-                        total += _extract_out_bytes(v)
-            elif isinstance(obj, list):
-                for item in obj:
-                    total += _extract_out_bytes(item)
-            return total
-
-        return _extract_out_bytes(data)
+        return 0
 
 
     def send_heartbeat_trace() -> None:
@@ -89,6 +75,7 @@ data:
         tracer = provider.get_tracer("pipeline-heartbeat")
         with tracer.start_as_current_span("heartbeat") as span:
             span.set_attribute("heartbeat.type", "dead-mans-switch")
+            span.set_attribute("heartbeat.id", str(uuid.uuid4()))
         provider.shutdown()
 
 

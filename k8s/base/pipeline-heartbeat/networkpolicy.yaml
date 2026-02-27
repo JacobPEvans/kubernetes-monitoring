@@ -28,8 +28,3 @@ spec:
       ports:
         - port: 9000  # Cribl Stream stats API
           protocol: TCP
-    - ports:
-        - port: 53  # DNS UDP
-          protocol: UDP
-        - port: 53  # DNS TCP
-          protocol: TCP
