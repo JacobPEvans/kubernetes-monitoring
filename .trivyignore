@@ -1,0 +1,3 @@
+# Trivy ignore file
+# Add CVE exceptions here with rationale and expiry date.
+# Format: CVE-YYYY-NNNNN  # reason: explanation  expires: YYYY-MM-DD
