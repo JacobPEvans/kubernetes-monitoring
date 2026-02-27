@@ -151,3 +151,16 @@ repos:
         language: system
         pass_filenames: false
         files: '\.(yaml|sh)$'
+
+  # ---------------------------------------------------------------------------
+  # Deployment verification (pre-push stage)
+  # ---------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: deploy-verify
+        name: Deploy and verify cluster health
+        entry: bash -c 'make deploy-doppler && sleep 5 && make status'
+        language: system
+        pass_filenames: false
+        files: ^(k8s/|scripts/|Makefile)
+        stages: [pre-push]

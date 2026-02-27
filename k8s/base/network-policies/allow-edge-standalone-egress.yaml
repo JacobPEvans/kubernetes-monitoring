@@ -1,5 +1,5 @@
 ---
-# Allow Cribl Edge Standalone to forward events to Cribl Stream Standalone.
+# Allow Cribl Edge Standalone to send events to Cribl Stream Standalone via HEC.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -17,5 +17,5 @@ spec:
             matchLabels:
               app: cribl-stream-standalone
       ports:
-        - port: 10080  # Cribl HTTP input
+        - port: 8088  # HEC input on Stream
           protocol: TCP

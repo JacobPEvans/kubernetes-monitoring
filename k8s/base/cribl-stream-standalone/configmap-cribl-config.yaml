@@ -39,6 +39,15 @@ data:
         port: 4317
         host: 0.0.0.0
         grpcConfig: {}
+      edge-hec-in:
+        type: splunk_hec
+        disabled: false
+        port: 8088
+        host: 0.0.0.0
+        splunkHecAPI: /services/collector
+        tls:
+          disabled: true
+        requireToken: false
   pipelines-route.yml: |
     id: default
     groups: {}

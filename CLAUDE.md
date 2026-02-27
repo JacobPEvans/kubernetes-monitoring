@@ -2,6 +2,14 @@
 
 Kubernetes monitoring manifests for local OrbStack cluster.
 
+## Architecture Invariant
+
+**Edge → Stream → Splunk is the ONLY allowed data path.**
+
+- `cribl-edge-standalone` sends ONLY to `cribl-stream-standalone` (HEC port 8088). It MUST NOT talk directly to Splunk.
+- `cribl-stream-standalone` is the ONLY component with Splunk egress.
+- Network policies enforce this: edge egress is locked to stream:8088 only.
+
 ## Key Rules
 
 - **PLACEHOLDER_HOME_DIR**: Base manifests use literal `PLACEHOLDER_HOME_DIR` for hostPath volumes. NEVER replace with real paths in `k8s/base/`.
