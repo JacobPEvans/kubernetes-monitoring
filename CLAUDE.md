@@ -65,6 +65,8 @@ GitHub Actions run on every push and PR:
 
 ## Testing
 
+See [Testing Guide](docs/TESTING.md) for full documentation on test tiers, prerequisites, and troubleshooting.
+
 ```bash
 make validate          # Validate kustomize builds + schemas
 make validate-schemas  # Schema validation only

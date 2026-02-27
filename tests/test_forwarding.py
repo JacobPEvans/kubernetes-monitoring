@@ -28,7 +28,7 @@ from conftest import (
     kubectl_secret_values,
     port_forward_get,
 )
-from helpers import find_flowing_stats, parse_otel_error_lines, url_present_in_outputs_yaml
+from helpers import find_flowing_stats, parse_otel_error_lines, query_splunk, url_present_in_outputs_yaml
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -240,23 +240,31 @@ class TestStreamToSplunkForwarding:
             "(data physically sent to splunk-hec), found none in last 100 log lines."
         )
 
-    def test_otlp_events_reach_splunk_realtime(self):
-        """Send OTLP trace and verify Stream reports outBytes > 0 within 30s (real-time).
+    def test_otlp_events_reach_splunk_realtime(self, splunk_client):
+        """Send OTLP trace and verify it appears in Splunk index=claude within 60s.
 
         End-to-end verification that the OTLP → Stream → Splunk HEC path (A4 + A7) delivers
-        events in real-time, not just that the output is configured. A sentCount > 0 in
-        Stream's _raw stats logs confirms bytes were physically sent to Splunk and acknowledged.
+        events to the correct Splunk index. Uses a unique trace ID as a sentinel to ensure
+        we're matching our specific test event, not background traffic.
         """
-        _send_trace(f"splunk-rt-{uuid.uuid4().hex[:8]}")
-        deadline = time.time() + 30
+        trace_id = f"splunk-rt-{uuid.uuid4().hex[:12]}"
+        _send_trace(trace_id)
+        mgmt_url, admin_password = splunk_client
+
+        deadline = time.time() + 60
         while time.time() < deadline:
-            logs = kubectl("logs", "statefulset/cribl-stream-standalone", "--since=90s")
-            if find_flowing_stats(logs):
+            results = query_splunk(
+                mgmt_url,
+                admin_password,
+                f'index=claude "{trace_id}"',
+                earliest="-5m",
+            )
+            if results:
                 return
-            time.sleep(3)
+            time.sleep(5)
         pytest.fail(
-            "Cribl Stream did not report outBytes > 0 to Splunk within 30s of sending an OTLP trace. "
-            "The OTLP → Stream → Splunk HEC pipeline (A4 + A7) is not forwarding events in real-time."
+            f"Trace ID '{trace_id}' not found in Splunk index=claude within 60s. "
+            "The OTLP → Stream → Splunk HEC pipeline (A4 + A7) is not forwarding events to the correct index."
         )
 
 
@@ -406,46 +414,28 @@ class TestClaudeCodeLogPipeline:
             "Check that cc-edge-claude-code pack is installed and inputs.yml was injected correctly."
         )
 
-    @pytest.mark.usefixtures("sentinel_claude_file")
-    def test_file_events_reach_splunk_realtime(self):
-        """Write a .jsonl sentinel and verify Edge's stream-hec sentCount increases within 60s.
+    def test_file_events_reach_splunk_realtime(self, sentinel_claude_file, splunk_client):
+        """Write a .jsonl sentinel and verify it reaches Splunk index=claude within 90s.
 
-        End-to-end verification that the Host FS → Edge → Cribl Stream HEC path (A2 + A5)
-        delivers file events in real-time. The sentCount on Edge's stream-hec output increments
-        when Stream returns HTTP 200, confirming bytes reached Stream successfully.
+        End-to-end verification of the full pipeline: Host FS → Edge → Cribl Stream → Splunk (A2+A5+A7).
+        Checks Splunk directly using the REST API instead of only checking Edge sentCount.
+        The sentinel value is unique per test run so matches are unambiguous.
         """
+        _, sentinel_value = sentinel_claude_file
+        mgmt_url, admin_password = splunk_client
 
-        def _edge_stream_sent_count() -> int:
-            output, _ = _kubectl_exec_no_fail(
-                "statefulset/cribl-edge-standalone",
-                "--",
-                "sh",
-                "-c",
-                "AUTH=$(curl -sf -X POST http://127.0.0.1:9420/api/v1/auth/login "
-                '-H "Content-Type: application/json" '
-                '-d \'{"username":"admin","password":"\'${CRIBL_EDGE_PASSWORD:-admin}\'"}\' '
-                '2>/dev/null | sed \'s/.*"token":"\\([^"]*\\)".*/\\1/\'); '
-                "curl -sf http://127.0.0.1:9420/api/v1/system/outputs "
-                '-H "Authorization: Bearer $AUTH" 2>/dev/null',
-            )
-            try:
-                data = json.loads(output)
-                for item in data.get("items", []):
-                    if item.get("id") == "stream-hec":
-                        return item.get("status", {}).get("metrics", {}).get("sentCount", 0)
-            except (ValueError, KeyError):
-                pass
-            return 0
-
-        baseline = _edge_stream_sent_count()
-        # sentinel_claude_file already written on the host by the fixture
-        deadline = time.time() + 60
+        deadline = time.time() + 90
         while time.time() < deadline:
-            if _edge_stream_sent_count() > baseline:
+            results = query_splunk(
+                mgmt_url,
+                admin_password,
+                f'index=claude sourcetype=claude:code:session "{sentinel_value}"',
+                earliest="-10m",
+            )
+            if results:
                 return
-            time.sleep(5)
+            time.sleep(10)
         pytest.fail(
-            f"Edge stream-hec sentCount did not increase within 60s of writing sentinel file "
-            f"(baseline={baseline}). The Host FS → Edge → Cribl Stream HEC pipeline (A2 + A5) "
-            "is not delivering file events in real-time."
+            f"Sentinel value '{sentinel_value}' not found in Splunk index=claude within 90s. "
+            "The Host FS → Edge → Cribl Stream → Splunk pipeline (A2+A5+A7) did not deliver the event."
         )

@@ -122,6 +122,20 @@ def port_forward_get(
 
 
 @pytest.fixture(scope="session")
+def splunk_client(cluster_ready):
+    """Return (mgmt_url, admin_password) for Splunk REST API queries.
+
+    Reads from the splunk-hec-config secret (mgmt-url and admin-password keys).
+    Skips tests if the keys are absent — requires make deploy-doppler (SPLUNK_PASSWORD must be set).
+    """
+    try:
+        values = kubectl_secret_values("splunk-hec-config", ["mgmt-url", "admin-password"])
+        return values["mgmt-url"], values["admin-password"]
+    except RuntimeError:
+        pytest.skip("splunk-hec-config secret missing mgmt-url or admin-password keys; run make deploy-doppler")
+
+
+@pytest.fixture(scope="session")
 def cluster_ready():
     """Skip all tests if the cluster is unreachable."""
     try:

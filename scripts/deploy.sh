@@ -70,6 +70,9 @@ fi
 if [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
   HEC_ARGS=(--from-literal=token="$SPLUNK_HEC_TOKEN")
   [ -n "$SPLUNK_HEC_URL" ] && HEC_ARGS+=(--from-literal=url="$SPLUNK_HEC_URL")
+  # Add management API URL and password for test queries (requires SPLUNK_NETWORK and SPLUNK_PASSWORD)
+  [ -n "$SPLUNK_IP" ] && HEC_ARGS+=(--from-literal=mgmt-url="https://${SPLUNK_IP}:8089")
+  [ -n "${SPLUNK_PASSWORD:-}" ] && HEC_ARGS+=(--from-literal=admin-password="$SPLUNK_PASSWORD")
   kubectl --context "$CONTEXT" create secret generic splunk-hec-config \
     --namespace "$NAMESPACE" \
     "${HEC_ARGS[@]}" \
