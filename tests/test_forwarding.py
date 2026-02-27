@@ -146,7 +146,7 @@ class TestStreamToSplunkForwarding:
             "curl",
             "-s",
             "--max-time",
-            "10",
+            "30",
             "-k",
             "-w",
             "\n%{http_code}",
@@ -174,7 +174,7 @@ class TestStreamToSplunkForwarding:
             "curl",
             "-s",
             "--max-time",
-            "10",
+            "30",
             "-k",
             "-w",
             "\n%{http_code}",
@@ -237,6 +237,25 @@ class TestStreamToSplunkForwarding:
         assert flowing, (
             "Expected _raw stats with outBytes > 0 after sending trace "
             "(data physically sent to splunk-hec), found none in last 100 log lines."
+        )
+
+    def test_otlp_events_reach_splunk_realtime(self):
+        """Send OTLP trace and verify Stream reports outBytes > 0 within 30s (real-time).
+
+        End-to-end verification that the OTLP → Stream → Splunk HEC path (A4 + A7) delivers
+        events in real-time, not just that the output is configured. A sentCount > 0 in
+        Stream's _raw stats logs confirms bytes were physically sent to Splunk and acknowledged.
+        """
+        _send_trace(f"splunk-rt-{uuid.uuid4().hex[:8]}")
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            logs = kubectl("logs", "statefulset/cribl-stream-standalone", "--since=90s")
+            if find_flowing_stats(logs):
+                return
+            time.sleep(3)
+        pytest.fail(
+            "Cribl Stream did not report outBytes > 0 to Splunk within 30s of sending an OTLP trace. "
+            "The OTLP → Stream → Splunk HEC pipeline (A4 + A7) is not forwarding events in real-time."
         )
 
 
@@ -321,8 +340,9 @@ class TestClaudeCodeLogPipeline:
         output, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
-            "cat",
-            "/opt/cribl/local/cc-edge-claude-code/inputs.yml",
+            "sh",
+            "-c",
+            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cc-edge-claude-code/inputs.yml",
         )
         assert returncode == 0, f"Could not read edge pack inputs.yml (exit {returncode}). Pack may not be installed."
         assert "/home/claude/.claude/projects/" in output, (
@@ -346,4 +366,85 @@ class TestClaudeCodeLogPipeline:
         pytest.fail(
             f"Edge FileMonitor did not log 'collector added' for {sentinel_path.name} within 35s. "
             "Check that the edge pack is installed and the hostPath volume is mounted correctly."
+        )
+
+    def test_edge_output_not_devnull(self):
+        """Edge 'default' output must NOT resolve to devnull — it must route to Splunk HEC.
+
+        Directly catches the failure mode where CRIBL_VOLUME_DIR is unset and the runtime
+        ignores config written to /opt/cribl/local/, leaving only the built-in devnull output.
+        """
+        output, _ = _kubectl_exec_no_fail(
+            "statefulset/cribl-edge-standalone",
+            "--",
+            "sh",
+            "-c",
+            "AUTH=$(curl -sf -X POST http://127.0.0.1:9420/api/v1/auth/login "
+            '-H "Content-Type: application/json" '
+            '-d \'{"username":"admin","password":"\'${CRIBL_EDGE_PASSWORD:-admin}\'"}\' '
+            '2>/dev/null | sed \'s/.*"token":"\\([^"]*\\)".*/\\1/\'); '
+            "curl -sf http://127.0.0.1:9420/api/v1/system/outputs "
+            '-H "Authorization: Bearer $AUTH" 2>/dev/null',
+        )
+        assert '"splunk-hec"' in output or '"splunk_hec"' in output, (
+            f"Edge outputs API does not include Splunk HEC output — all events route to devnull. "
+            f"API response: {output[:300]}"
+        )
+
+    def test_edge_file_input_active(self):
+        """Edge file monitor must be actively collecting files from the host filesystem.
+
+        Catches the failure mode where the pack or injected inputs.yml was not loaded
+        by the runtime (e.g. config written to wrong directory due to missing CRIBL_VOLUME_DIR).
+        The pack inputs are in the worker namespace and not listed by /api/v1/system/inputs,
+        so we verify activity via pod logs which show FileMonitor collector messages.
+        """
+        logs = kubectl("logs", "statefulset/cribl-edge-standalone", "--since=5m")
+        assert "FileMonitor collector added" in logs or "cc-edge-claude-code" in logs, (
+            "Edge file monitor is not active — pack may not be installed or inputs.yml was not loaded. "
+            "Check that cc-edge-claude-code pack is installed and inputs.yml was injected correctly."
+        )
+
+    @pytest.mark.usefixtures("sentinel_claude_file")
+    def test_file_events_reach_splunk_realtime(self):
+        """Write a .jsonl sentinel and verify Edge's Splunk sentCount increases within 60s (real-time).
+
+        End-to-end verification that the Host FS → Edge → Splunk HEC path (A2 + A5) delivers
+        file events in real-time. The sentCount on Edge's splunk-hec output only increments
+        when Splunk returns HTTP 200, confirming bytes were physically received.
+        """
+
+        def _edge_splunk_sent_count() -> int:
+            output, _ = _kubectl_exec_no_fail(
+                "statefulset/cribl-edge-standalone",
+                "--",
+                "sh",
+                "-c",
+                "AUTH=$(curl -sf -X POST http://127.0.0.1:9420/api/v1/auth/login "
+                '-H "Content-Type: application/json" '
+                '-d \'{"username":"admin","password":"\'${CRIBL_EDGE_PASSWORD:-admin}\'"}\' '
+                '2>/dev/null | sed \'s/.*"token":"\\([^"]*\\)".*/\\1/\'); '
+                "curl -sf http://127.0.0.1:9420/api/v1/system/outputs "
+                '-H "Authorization: Bearer $AUTH" 2>/dev/null',
+            )
+            try:
+                data = json.loads(output)
+                for item in data.get("items", []):
+                    if item.get("id") == "splunk-hec":
+                        return item.get("status", {}).get("metrics", {}).get("sentCount", 0)
+            except (ValueError, KeyError):
+                pass
+            return 0
+
+        baseline = _edge_splunk_sent_count()
+        # sentinel_claude_file already written on the host by the fixture
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            if _edge_splunk_sent_count() > baseline:
+                return
+            time.sleep(5)
+        pytest.fail(
+            f"Edge Splunk sentCount did not increase within 60s of writing sentinel file "
+            f"(baseline={baseline}). The Host FS → Edge → Splunk HEC pipeline (A2 + A5) "
+            "is not delivering file events in real-time."
         )

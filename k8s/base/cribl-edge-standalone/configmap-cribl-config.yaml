@@ -52,8 +52,8 @@ data:
     if echo "$PACK_CHECK" | grep -q "cc-edge-claude-code"; then
       echo "Pack already installed"
     else
-      mkdir -p /opt/cribl/state/packs
-      cp /packs/cc-edge-claude-code.crbl /opt/cribl/state/packs/
+      mkdir -p "${CRIBL_VOLUME_DIR:-/opt/cribl}/state/packs"
+      cp /packs/cc-edge-claude-code.crbl "${CRIBL_VOLUME_DIR:-/opt/cribl}/state/packs/"
       RESULT=$(curl -sf -X POST http://127.0.0.1:9420/api/v1/packs \
         -H "Authorization: Bearer $AUTH" \
         -H 'Content-Type: application/json' \
@@ -73,9 +73,14 @@ data:
     fi
   outputs.yml: |
     outputs:
-      cribl-stream:
-        type: cribl_http
-        url: "http://cribl-stream-standalone:10080"
+      splunk-hec:
+        type: splunk_hec
+        url: "__SPLUNK_HEC_URL__"
+        token: "__SPLUNK_HEC_TOKEN__"
+        index: claude
+        source: cribl-edge-standalone
+        sourcetype: "claude:code:session"
+        rejectUnauthorized: false
         compress: true
         concurrency: 5
         maxPayloadSizeKB: 4096
@@ -85,7 +90,7 @@ data:
         pqPath: /opt/cribl/data/pq
       default:
         type: default
-        defaultId: cribl-stream
+        defaultId: splunk-hec
   inputs-override.yml: |
     inputs:
       claude-code-logs:
