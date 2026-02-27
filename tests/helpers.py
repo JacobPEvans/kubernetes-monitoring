@@ -4,6 +4,7 @@ import base64
 import json
 import re
 import ssl
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -36,24 +37,38 @@ def find_flowing_stats(log_text: str) -> list[str]:
     return results
 
 
-def query_splunk(mgmt_url: str, admin_password: str, search: str, earliest: str = "-15m") -> list[dict]:
+def query_splunk(
+    mgmt_url: str,
+    admin_password: str,
+    search: str,
+    earliest: str = "-15m",
+    verify_tls: bool = False,
+    timeout_seconds: int = 30,
+) -> list[dict]:
     """Query Splunk via the REST search/export API and return result dicts.
 
-    Uses urllib (no third-party deps) with TLS verification disabled for
-    the self-signed cert on the LAN Splunk instance.
+    Uses urllib (no third-party deps). By default, TLS verification is
+    disabled for the self-signed cert on the LAN Splunk instance; callers
+    can set verify_tls=True to enforce certificate validation.
+
+    Returns an empty list on transient connectivity or auth errors so that
+    polling loops can continue retrying until their deadline.
 
     Args:
-        mgmt_url: Splunk management URL, e.g. "https://10.0.1.200:8089"
+        mgmt_url: Splunk management URL, e.g. "https://192.168.0.200:8089"
         admin_password: Splunk admin password
         search: SPL search string (without leading "search" keyword)
         earliest: Splunk earliest time modifier, e.g. "-15m"
+        verify_tls: If True, enforce TLS certificate and hostname checks.
+        timeout_seconds: Per-request socket timeout in seconds.
 
     Returns:
-        List of result dicts from Splunk's export API.
+        List of result dicts from Splunk's export API, or [] on error.
     """
     ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    if not verify_tls:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
 
     body = urllib.parse.urlencode(
         {
@@ -73,17 +88,20 @@ def query_splunk(mgmt_url: str, admin_password: str, search: str, earliest: str 
     )
 
     results = []
-    with urllib.request.urlopen(req, context=ctx, timeout=30) as resp:
-        for line in resp:
-            line = line.decode().strip()
-            if not line:
-                continue
-            try:
-                data = json.loads(line)
-                if "result" in data:
-                    results.append(data["result"])
-            except (ValueError, KeyError):
-                continue
+    try:
+        with urllib.request.urlopen(req, context=ctx, timeout=timeout_seconds) as resp:
+            for line in resp:
+                line = line.decode().strip()
+                if not line:
+                    continue
+                try:
+                    data = json.loads(line)
+                    if "result" in data:
+                        results.append(data["result"])
+                except (ValueError, KeyError):
+                    continue
+    except (urllib.error.URLError, OSError):
+        return []
     return results
 
 
