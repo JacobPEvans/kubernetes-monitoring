@@ -16,6 +16,8 @@ resources:
   - cribl-stream-standalone/
   # Cribl MCP Server (Cribl Cloud API access for Claude Code)
   - cribl-mcp-server/
+  # Pipeline heartbeat CronJob (dead-man's switch)
+  - pipeline-heartbeat/
   # Network policies
   - network-policies/
 

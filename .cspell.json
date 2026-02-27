@@ -54,7 +54,10 @@
     "ENOTEMPTY",
     "mgmt",
     "nodeport",
-    "streamable"
+    "streamable",
+    "curlimages",
+    "elif",
+    "isinstance"
   ],
   "ignorePaths": [
     "packs/",
