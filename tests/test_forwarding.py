@@ -387,8 +387,8 @@ class TestClaudeCodeLogPipeline:
             "curl -sf http://127.0.0.1:9420/api/v1/system/outputs "
             '-H "Authorization: Bearer $AUTH" 2>/dev/null',
         )
-        assert '"splunk-hec"' in output or '"splunk_hec"' in output, (
-            f"Edge outputs API does not include Splunk HEC output — all events route to devnull. "
+        assert '"stream-hec"' in output, (
+            f"Edge outputs API does not include stream-hec output — all events route to devnull. "
             f"API response: {output[:300]}"
         )
 
@@ -408,14 +408,14 @@ class TestClaudeCodeLogPipeline:
 
     @pytest.mark.usefixtures("sentinel_claude_file")
     def test_file_events_reach_splunk_realtime(self):
-        """Write a .jsonl sentinel and verify Edge's Splunk sentCount increases within 60s (real-time).
+        """Write a .jsonl sentinel and verify Edge's stream-hec sentCount increases within 60s.
 
-        End-to-end verification that the Host FS → Edge → Splunk HEC path (A2 + A5) delivers
-        file events in real-time. The sentCount on Edge's splunk-hec output only increments
-        when Splunk returns HTTP 200, confirming bytes were physically received.
+        End-to-end verification that the Host FS → Edge → Cribl Stream HEC path (A2 + A5)
+        delivers file events in real-time. The sentCount on Edge's stream-hec output increments
+        when Stream returns HTTP 200, confirming bytes reached Stream successfully.
         """
 
-        def _edge_splunk_sent_count() -> int:
+        def _edge_stream_sent_count() -> int:
             output, _ = _kubectl_exec_no_fail(
                 "statefulset/cribl-edge-standalone",
                 "--",
@@ -431,21 +431,21 @@ class TestClaudeCodeLogPipeline:
             try:
                 data = json.loads(output)
                 for item in data.get("items", []):
-                    if item.get("id") == "splunk-hec":
+                    if item.get("id") == "stream-hec":
                         return item.get("status", {}).get("metrics", {}).get("sentCount", 0)
             except (ValueError, KeyError):
                 pass
             return 0
 
-        baseline = _edge_splunk_sent_count()
+        baseline = _edge_stream_sent_count()
         # sentinel_claude_file already written on the host by the fixture
         deadline = time.time() + 60
         while time.time() < deadline:
-            if _edge_splunk_sent_count() > baseline:
+            if _edge_stream_sent_count() > baseline:
                 return
             time.sleep(5)
         pytest.fail(
-            f"Edge Splunk sentCount did not increase within 60s of writing sentinel file "
-            f"(baseline={baseline}). The Host FS → Edge → Splunk HEC pipeline (A2 + A5) "
+            f"Edge stream-hec sentCount did not increase within 60s of writing sentinel file "
+            f"(baseline={baseline}). The Host FS → Edge → Cribl Stream HEC pipeline (A2 + A5) "
             "is not delivering file events in real-time."
         )
