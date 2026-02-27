@@ -55,6 +55,7 @@
     "mgmt",
     "nodeport",
     "streamable",
+    "curlimages",
     "elif",
     "isinstance"
   ],
