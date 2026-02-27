@@ -54,7 +54,9 @@
     "ENOTEMPTY",
     "mgmt",
     "nodeport",
-    "streamable"
+    "streamable",
+    "elif",
+    "isinstance"
   ],
   "ignorePaths": [
     "packs/",

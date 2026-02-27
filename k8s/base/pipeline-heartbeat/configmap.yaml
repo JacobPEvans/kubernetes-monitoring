@@ -1,0 +1,128 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: heartbeat-script
+  namespace: monitoring
+  labels:
+    app: pipeline-heartbeat
+data:
+  heartbeat.py: |
+    #!/usr/bin/env python3
+    """Pipeline heartbeat: sends an OTLP trace and verifies Stream outBytes increased.
+
+    Dead-man's switch: if this job stops succeeding, Kubernetes lastSuccessfulTime
+    will show a gap — a clear signal that the pipeline is broken.
+
+    Flow: heartbeat pod → otel-collector:4317 (OTLP gRPC)
+          → cribl-stream-standalone:8088 (HEC, via Stream single-mode pipeline)
+          → Splunk HEC
+    Verification: Stream stats API outBytes before vs. after.
+    """
+    import sys
+    import time
+
+    import requests
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+
+    STREAM_STATS_URL = "http://cribl-stream-standalone:9000/api/v1/system/stats"
+    OTEL_ENDPOINT = "otel-collector:4317"
+    WAIT_SECONDS = 15
+
+
+    def get_out_bytes() -> int:
+        """Fetch Stream stats and return total outBytes across all output groups.
+
+        Response shape (Cribl /api/v1/system/stats):
+          {"result": [{"id": "...", "outBytes": N, ...}, ...]}
+
+        Falls back to summing all numeric values under keys containing both
+        'out' and 'yte' (case-insensitive) if the expected shape is absent.
+        """
+        try:
+            resp = requests.get(STREAM_STATS_URL, timeout=10)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            print(f"WARN: Could not fetch Stream stats: {exc}", file=sys.stderr)
+            return 0
+
+        # Expected shape: {"result": [...]}
+        items = data.get("result", [])
+        if items:
+            total = sum(
+                item.get("outBytes", 0)
+                for item in items
+                if isinstance(item, dict)
+            )
+            if total > 0:
+                return total
+            # outBytes may be zero legitimately; still return it
+            return total
+
+        # Fallback: sum any numeric value under keys containing 'out' and 'yte'
+        def _extract_out_bytes(obj) -> int:
+            total = 0
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    k_lower = k.lower()
+                    if "out" in k_lower and "yte" in k_lower and isinstance(v, (int, float)):
+                        total += int(v)
+                    else:
+                        total += _extract_out_bytes(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    total += _extract_out_bytes(item)
+            return total
+
+        return _extract_out_bytes(data)
+
+
+    def send_heartbeat_trace() -> None:
+        """Send a single OTLP trace span to otel-collector."""
+        resource = Resource(attributes={SERVICE_NAME: "pipeline-heartbeat"})
+        exporter = OTLPSpanExporter(endpoint=OTEL_ENDPOINT, insecure=True)
+        provider = TracerProvider(resource=resource)
+        provider.add_span_processor(SimpleSpanProcessor(exporter))
+        tracer = provider.get_tracer("pipeline-heartbeat")
+        with tracer.start_as_current_span("heartbeat") as span:
+            span.set_attribute("heartbeat.type", "dead-mans-switch")
+        provider.shutdown()
+
+
+    def main() -> int:
+        print("Heartbeat: capturing Stream outBytes before send...")
+        before = get_out_bytes()
+        print(f"  before outBytes = {before}")
+
+        print("Heartbeat: sending OTLP trace to otel-collector:4317...")
+        try:
+            send_heartbeat_trace()
+        except Exception as exc:
+            print(f"FAIL: Could not send OTLP trace: {exc}", file=sys.stderr)
+            return 1
+        print("  trace sent.")
+
+        print(f"Heartbeat: waiting {WAIT_SECONDS}s for pipeline to process...")
+        time.sleep(WAIT_SECONDS)
+
+        print("Heartbeat: capturing Stream outBytes after send...")
+        after = get_out_bytes()
+        print(f"  after  outBytes = {after}")
+
+        if after > before:
+            print("OK: pipeline flowing")
+            return 0
+        else:
+            print(
+                f"FAIL: Stream outBytes did not increase "
+                f"(before={before}, after={after})",
+                file=sys.stderr,
+            )
+            return 1
+
+
+    if __name__ == "__main__":
+        sys.exit(main())

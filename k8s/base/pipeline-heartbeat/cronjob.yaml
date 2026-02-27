@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pipeline-heartbeat
+  namespace: monitoring
+  labels:
+    app: pipeline-heartbeat
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: pipeline-heartbeat
+        spec:
+          serviceAccountName: pipeline-heartbeat
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+          containers:
+            - name: heartbeat
+              image: python:3.12-slim
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  pip install opentelemetry-sdk opentelemetry-exporter-otlp-proto-grpc requests --quiet && python /scripts/heartbeat.py
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+              volumeMounts:
+                - name: heartbeat-script
+                  mountPath: /scripts
+                  readOnly: true
+          volumes:
+            - name: heartbeat-script
+              configMap:
+                name: heartbeat-script
