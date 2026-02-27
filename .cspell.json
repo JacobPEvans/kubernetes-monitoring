@@ -49,7 +49,9 @@
     "aquasecurity",
     "jacobpevans",
     "shellcheck",
-    "yamllint"
+    "yamllint",
+    "devnull",
+    "ENOTEMPTY"
   ],
   "ignorePaths": [
     "packs/",
