@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cribl-mcp-server
+  namespace: monitoring
+  labels:
+    app: cribl-mcp-server
+    app.kubernetes.io/name: cribl-mcp-server
+    app.kubernetes.io/component: mcp-server
+spec:
+  serviceName: cribl-mcp-server
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cribl-mcp-server
+  template:
+    metadata:
+      labels:
+        app: cribl-mcp-server
+        app.kubernetes.io/name: cribl-mcp-server
+        app.kubernetes.io/component: mcp-server
+    spec:
+      priorityClassName: monitoring-low
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+        - name: cribl-mcp-server
+          image: cribl/cribl-mcp-server:latest
+          ports:
+            - name: mcp
+              containerPort: 3030
+              protocol: TCP
+          env:
+            - name: CRIBL_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: cribl-mcp-config
+                  key: base-url
+                  optional: true
+            - name: CRIBL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: cribl-mcp-config
+                  key: client-id
+                  optional: true
+            - name: CRIBL_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: cribl-mcp-config
+                  key: client-secret
+                  optional: true
+            - name: MCP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: cribl-mcp-config
+                  key: api-key
+                  optional: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          startupProbe:
+            tcpSocket:
+              port: 3030
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket:
+              port: 3030
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 3030
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 5
+      volumes:
+        - name: tmp
+          emptyDir: {}

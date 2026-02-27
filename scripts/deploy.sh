@@ -92,6 +92,23 @@ if [ -n "${CLAUDE_API_KEY:-}" ] || [ -n "${GEMINI_API_KEY:-}" ]; then
 else
   echo "  SKIPPED: ai-api-keys (no API keys set)"
 fi
+
+# Cribl MCP server config (CRIBL_BASE_URL from cloud-secrets, MCP_API_KEY from iac-conf-mgmt DEFAULT_PASSWORD)
+MCP_BASE_URL="${CRIBL_MCP_BASE_URL:-${CRIBL_BASE_URL:-}}"
+if [ -n "$MCP_BASE_URL" ]; then
+  MCP_ARGS=(--from-literal=base-url="$MCP_BASE_URL")
+  [ -n "${CRIBL_CLIENT_ID:-}" ] && MCP_ARGS+=(--from-literal=client-id="$CRIBL_CLIENT_ID")
+  [ -n "${CRIBL_CLIENT_SECRET:-}" ] && MCP_ARGS+=(--from-literal=client-secret="$CRIBL_CLIENT_SECRET")
+  [ -n "${DEFAULT_PASSWORD:-}" ] && MCP_ARGS+=(--from-literal=api-key="$DEFAULT_PASSWORD")
+  kubectl --context "$CONTEXT" create secret generic cribl-mcp-config \
+    --namespace "$NAMESPACE" \
+    "${MCP_ARGS[@]}" \
+    --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
+  echo "  Created: cribl-mcp-config"
+else
+  echo "  SKIPPED: cribl-mcp-config (CRIBL_BASE_URL not set)"
+  echo "           Set CRIBL_BASE_URL in Doppler cloud-secrets/prd, or use: make deploy-doppler"
+fi
 echo ""
 
 # Step 3: Apply kustomize
@@ -107,9 +124,10 @@ declare -A timeouts=(
   [cribl-edge-standalone]=120s
   # 240s accounts for PVC provisioning + startupProbe (30 failures × 10s = 300s max)
   [cribl-stream-standalone]=240s
+  [cribl-mcp-server]=120s
 )
 
-for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do
+for name in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone cribl-mcp-server; do
   kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout status "statefulset/$name" --timeout="${timeouts[$name]}"
 done
 echo ""
@@ -122,6 +140,7 @@ echo "  OTEL gRPC:                   localhost:30317"
 echo "  OTEL HTTP:                   localhost:30318"
 echo "  Cribl Stream Standalone UI:  http://localhost:30900  (admin / CRIBL_STREAM_PASSWORD)"
 echo "  Cribl Edge Standalone UI:    http://localhost:30910"
+echo "  Cribl MCP Server:            http://localhost:30030/mcp"
 echo ""
 echo "Verify:"
 echo "  kubectl --context $CONTEXT get all -n $NAMESPACE"

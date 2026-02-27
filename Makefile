@@ -71,7 +71,7 @@ full-power: ## Scale all monitoring pods to 1 replica (full power)
 	@echo "Scaling up monitoring stack..."
 	kubectl --context $(CONTEXT) -n $(NAMESPACE) scale statefulset --all --replicas=1
 	@echo "Waiting for rollouts..."
-	@for sts in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone; do \
+	@for sts in otel-collector cribl-edge-managed cribl-edge-standalone cribl-stream-standalone cribl-mcp-server; do \
 		kubectl --context $(CONTEXT) -n $(NAMESPACE) rollout status statefulset/$$sts --timeout=120s; \
 	done
 	@echo "All monitoring pods restored."

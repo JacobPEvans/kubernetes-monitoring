@@ -12,3 +12,5 @@ resources:
   - allow-stream-ingress.yaml
   - allow-stream-egress.yaml
   - allow-stream-ui-ingress.yaml
+  - allow-mcp-egress.yaml
+  - allow-mcp-ingress.yaml

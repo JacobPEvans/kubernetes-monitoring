@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cribl": {
+      "type": "sse",
+      "url": "http://localhost:30030/mcp"
+    }
+  }
+}

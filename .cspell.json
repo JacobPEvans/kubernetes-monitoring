@@ -51,7 +51,10 @@
     "shellcheck",
     "yamllint",
     "devnull",
-    "ENOTEMPTY"
+    "ENOTEMPTY",
+    "mgmt",
+    "nodeport",
+    "streamable"
   ],
   "ignorePaths": [
     "packs/",
