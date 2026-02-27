@@ -28,7 +28,7 @@ spec:
                 - curl
                 - -sf
                 - --fail-with-body
-                - http://cribl-stream-standalone:9000/api/v1/system/stats
+                - http://cribl-stream-standalone:9000/api/v1/health
               securityContext:
                 allowPrivilegeEscalation: false
                 readOnlyRootFilesystem: true
