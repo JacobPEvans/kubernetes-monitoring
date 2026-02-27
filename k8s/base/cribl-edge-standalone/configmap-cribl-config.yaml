@@ -77,8 +77,8 @@ data:
         type: splunk_hec
         url: "http://cribl-stream-standalone:8088/services/collector"
         token: "edge-internal"
-        index: "claude"
-        source: "cribl-edge-standalone"
+        index: claude
+        source: cribl-edge-standalone
         sourcetype: "claude:code:session"
         rejectUnauthorized: false
         compress: false
