@@ -27,3 +27,7 @@ spec:
       port: 4317
       targetPort: 4317
       protocol: TCP
+    - name: edge-hec
+      port: 8088
+      targetPort: 8088
+      protocol: TCP

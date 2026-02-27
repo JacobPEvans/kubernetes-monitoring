@@ -116,6 +116,18 @@ echo "--- Step 3: Applying kustomize overlay ---"
 kubectl --context "$CONTEXT" apply -k "$REPO_ROOT/k8s/overlays/local/"
 echo ""
 
+# Step 3.5: Restart all StatefulSets to pick up any ConfigMap/Secret changes.
+# Kubernetes does not restart pods automatically when ConfigMaps or Secrets change,
+# so we force a rolling restart on every deploy to guarantee consistency.
+echo "--- Step 3.5: Restarting StatefulSets ---"
+kubectl --context "$CONTEXT" -n "$NAMESPACE" rollout restart \
+  statefulset/otel-collector \
+  statefulset/cribl-edge-standalone \
+  statefulset/cribl-stream-standalone \
+  statefulset/cribl-edge-managed \
+  statefulset/cribl-mcp-server
+echo ""
+
 # Step 4: Wait for rollouts
 echo "--- Step 4: Waiting for rollouts ---"
 declare -A timeouts=(

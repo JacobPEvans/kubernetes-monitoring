@@ -24,5 +24,5 @@ spec:
             matchLabels:
               app: cribl-edge-standalone
       ports:
-        - port: 10080  # Cribl HTTP input from Edge Standalone
+        - port: 8088  # HEC from Edge Standalone
           protocol: TCP

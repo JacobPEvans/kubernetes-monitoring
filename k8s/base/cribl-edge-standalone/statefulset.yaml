@@ -44,18 +44,6 @@ spec:
                   name: cribl-edge-admin
                   key: password
                   optional: true
-            - name: SPLUNK_HEC_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: splunk-hec-config
-                  key: token
-                  optional: true
-            - name: SPLUNK_HEC_URL
-              valueFrom:
-                secretKeyRef:
-                  name: splunk-hec-config
-                  key: url
-                  optional: true
             - name: CLAUDE_HOME
               value: "/home/claude"
             - name: CRIBL_EDGE_API_HOST
@@ -63,17 +51,7 @@ spec:
             - name: CRIBL_BEFORE_START_CMD_1
               value: "mkdir -p ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cc-edge-claude-code"
             - name: CRIBL_BEFORE_START_CMD_2
-              value: |
-                if [ -n "${SPLUNK_HEC_URL:-}" ] && [ -n "${SPLUNK_HEC_TOKEN:-}" ]; then
-                  sed \
-                    -e "s|__SPLUNK_HEC_URL__|$SPLUNK_HEC_URL|g" \
-                    -e "s|__SPLUNK_HEC_TOKEN__|$SPLUNK_HEC_TOKEN|g" \
-                    /var/tmp/cribl-config/outputs.yml \
-                    > ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/outputs.yml
-                else
-                  echo "SPLUNK_HEC_URL or SPLUNK_HEC_TOKEN not set; copying outputs.yml without substitution" >&2
-                  cp /var/tmp/cribl-config/outputs.yml ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/outputs.yml
-                fi
+              value: "cp /var/tmp/cribl-config/outputs.yml ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/outputs.yml"
             - name: CRIBL_BEFORE_START_CMD_3
               value: |
                 sed "s|__CLAUDE_HOME__|$CLAUDE_HOME|g" \

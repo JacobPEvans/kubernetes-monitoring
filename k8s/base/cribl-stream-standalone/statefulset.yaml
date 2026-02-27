@@ -38,6 +38,9 @@ spec:
             - name: otlp
               containerPort: 4317
               protocol: TCP
+            - name: edge-hec
+              containerPort: 8088
+              protocol: TCP
             - name: leader
               containerPort: 4200
               protocol: TCP

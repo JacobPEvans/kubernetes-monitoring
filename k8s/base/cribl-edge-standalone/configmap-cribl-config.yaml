@@ -73,15 +73,15 @@ data:
     fi
   outputs.yml: |
     outputs:
-      splunk-hec:
+      stream-hec:
         type: splunk_hec
-        url: "__SPLUNK_HEC_URL__"
-        token: "__SPLUNK_HEC_TOKEN__"
+        url: "http://cribl-stream-standalone:8088/services/collector"
+        token: "edge-internal"
         index: claude
         source: cribl-edge-standalone
         sourcetype: "claude:code:session"
         rejectUnauthorized: false
-        compress: true
+        compress: false
         concurrency: 5
         maxPayloadSizeKB: 4096
         onBackpressure: block
@@ -90,7 +90,7 @@ data:
         pqPath: /opt/cribl/data/pq
       default:
         type: default
-        defaultId: splunk-hec
+        defaultId: stream-hec
   inputs-override.yml: |
     inputs:
       claude-code-logs:
