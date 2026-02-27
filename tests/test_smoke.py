@@ -132,24 +132,25 @@ class TestMcpServerNodePort:
     and the MCP SSE protocol is responding correctly end-to-end.
     """
 
-    def test_mcp_returns_200(self):
-        """MCP server NodePort :30030 should accept HTTP connections from macOS."""
+    def _connect(self) -> requests.Response:
+        """Open a streaming GET to the MCP NodePort. Fails the test on connection error."""
         try:
-            resp = requests.get(MCP_NODEPORT_URL, stream=True, timeout=(5, 5))
+            return requests.get(MCP_NODEPORT_URL, stream=True, timeout=(5, 5))
         except requests.exceptions.ConnectionError as exc:
             pytest.fail(
                 f"Cannot connect to MCP server at {MCP_NODEPORT_URL} via NodePort. "
                 f"Is the cluster running? (make deploy-doppler)\n{exc}"
             )
+
+    def test_mcp_returns_200(self):
+        """MCP server NodePort :30030 should accept HTTP connections from macOS."""
+        resp = self._connect()
         assert resp.status_code == 200, f"MCP server returned {resp.status_code} — expected 200"
         resp.close()
 
     def test_mcp_sse_content_type(self):
         """MCP endpoint should respond with SSE content-type (text/event-stream)."""
-        try:
-            resp = requests.get(MCP_NODEPORT_URL, stream=True, timeout=(5, 5))
-        except requests.exceptions.ConnectionError as exc:
-            pytest.fail(f"Cannot connect to {MCP_NODEPORT_URL}: {exc}")
+        resp = self._connect()
         content_type = resp.headers.get("content-type", "")
         resp.close()
         assert "text/event-stream" in content_type, (
@@ -168,11 +169,7 @@ class TestMcpServerNodePort:
         This test verifies step 2 — that the server announces the session endpoint
         within 5 seconds of the connection being established.
         """
-        try:
-            resp = requests.get(MCP_NODEPORT_URL, stream=True, timeout=(5, 5))
-        except requests.exceptions.ConnectionError as exc:
-            pytest.fail(f"Cannot connect to {MCP_NODEPORT_URL}: {exc}")
-
+        resp = self._connect()
         data_line = None
         try:
             for line in resp.iter_lines(decode_unicode=True):

@@ -94,7 +94,7 @@ else
 fi
 
 # Cribl MCP server config (CRIBL_BASE_URL from cloud-secrets, MCP_API_KEY from iac-conf-mgmt DEFAULT_PASSWORD)
-MCP_BASE_URL="${CRIBL_MCP_BASE_URL:-${CRIBL_BASE_URL:-}}"
+MCP_BASE_URL="${CRIBL_BASE_URL:-}"
 if [ -n "$MCP_BASE_URL" ]; then
   MCP_ARGS=(--from-literal=base-url="$MCP_BASE_URL")
   [ -n "${CRIBL_CLIENT_ID:-}" ] && MCP_ARGS+=(--from-literal=client-id="$CRIBL_CLIENT_ID")
