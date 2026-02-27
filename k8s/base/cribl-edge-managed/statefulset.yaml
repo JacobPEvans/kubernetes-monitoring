@@ -69,6 +69,15 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1"
+          startupProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "curl -sf http://127.0.0.1:9420/api/v1/health || exit 1"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             exec:
               command:
