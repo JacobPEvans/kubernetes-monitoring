@@ -48,6 +48,19 @@ data:
         tls:
           disabled: true
         requireToken: false
+  pipelines-force-splunk-meta.yml: |
+    functions:
+      - id: eval
+        filter: "true"
+        disabled: false
+        conf:
+          add:
+            - name: index
+              value: "'claude'"
+            - name: sourcetype
+              value: "'claude:code:session'"
+            - name: source
+              value: "source || 'cribl-stream'"
   pipelines-route.yml: |
     id: default
     groups: {}
@@ -55,6 +68,6 @@ data:
       - id: default-route
         name: Default Route
         filter: "true"
-        pipeline: passthru
+        pipeline: force-splunk-meta
         output: splunk-hec
         final: true

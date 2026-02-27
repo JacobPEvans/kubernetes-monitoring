@@ -5,8 +5,10 @@ without any Kubernetes infrastructure.
 """
 
 import json
+import urllib.error
+from unittest.mock import MagicMock, patch
 
-from helpers import find_flowing_stats, parse_otel_error_lines, url_present_in_outputs_yaml
+from helpers import find_flowing_stats, parse_otel_error_lines, query_splunk, url_present_in_outputs_yaml
 
 
 class TestParseOtelErrorLines:
@@ -60,6 +62,45 @@ class TestFindFlowingStats:
 
     def test_empty_log(self):
         assert find_flowing_stats("") == []
+
+
+class TestQuerySplunk:
+    def _urlopen_ctx(self, raw_lines: list[bytes]) -> MagicMock:
+        """Return a mock context manager whose __enter__ yields raw_lines."""
+        cm = MagicMock()
+        cm.__enter__ = MagicMock(return_value=iter(raw_lines))
+        cm.__exit__ = MagicMock(return_value=False)
+        return cm
+
+    def test_returns_result_dicts(self):
+        lines = [json.dumps({"result": {"index": "claude", "source": "edge"}}).encode()]
+        with patch("helpers.urllib.request.urlopen") as mock_open:
+            mock_open.return_value = self._urlopen_ctx(lines)
+            results = query_splunk("https://splunk:8089", "pass", "index=claude")
+        assert results == [{"index": "claude", "source": "edge"}]
+
+    def test_skips_empty_lines_and_non_result_entries(self):
+        lines = [
+            b"",
+            json.dumps({"preview": True}).encode(),
+            json.dumps({"result": {"id": "1"}}).encode(),
+        ]
+        with patch("helpers.urllib.request.urlopen") as mock_open:
+            mock_open.return_value = self._urlopen_ctx(lines)
+            results = query_splunk("https://splunk:8089", "pass", "index=claude")
+        assert results == [{"id": "1"}]
+
+    def test_returns_empty_list_on_url_error(self):
+        with patch("helpers.urllib.request.urlopen") as mock_open:
+            mock_open.side_effect = urllib.error.URLError("connection refused")
+            results = query_splunk("https://splunk:8089", "pass", "index=claude")
+        assert results == []
+
+    def test_returns_empty_list_on_os_error(self):
+        with patch("helpers.urllib.request.urlopen") as mock_open:
+            mock_open.side_effect = OSError("network unreachable")
+            results = query_splunk("https://splunk:8089", "pass", "index=claude")
+        assert results == []
 
 
 class TestUrlPresentInOutputsYaml:

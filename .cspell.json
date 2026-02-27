@@ -57,7 +57,9 @@
     "streamable",
     "curlimages",
     "elif",
-    "isinstance"
+    "isinstance",
+    "retryable",
+    "httpevent"
   ],
   "ignorePaths": [
     "packs/",
