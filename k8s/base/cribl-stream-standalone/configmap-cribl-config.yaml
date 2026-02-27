@@ -60,7 +60,7 @@ data:
             - name: sourcetype
               value: "'claude:code:session'"
             - name: source
-              value: "'cribl-stream'"
+              value: "source || 'cribl-stream'"
   pipelines-route.yml: |
     id: default
     groups: {}
