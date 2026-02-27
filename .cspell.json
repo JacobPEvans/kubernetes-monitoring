@@ -50,7 +50,8 @@
     "jacobpevans",
     "shellcheck",
     "yamllint",
-    "devnull"
+    "devnull",
+    "ENOTEMPTY"
   ],
   "ignorePaths": [
     "packs/",

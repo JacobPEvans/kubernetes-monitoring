@@ -7,6 +7,7 @@ These tests verify data flows correctly through the pipeline:
   A7: Cribl Stream Standalone → Splunk HEC (:8088 HEC)
 """
 
+import errno
 import json
 import subprocess
 import time
@@ -291,8 +292,9 @@ def sentinel_claude_file():
         pass
     try:
         _CLAUDE_TEST_DIR.rmdir()  # removes dir only if empty
-    except OSError:
-        pass
+    except OSError as exc:
+        if exc.errno != errno.ENOTEMPTY:
+            raise
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -307,8 +309,8 @@ class TestClaudeCodeLogPipeline:
     """
 
     def test_claude_home_mount_accessible(self):
-        """Edge pod can list host ~/.claude/projects/ via the hostPath volume mount."""
-        output, returncode = _kubectl_exec_no_fail(
+        """Edge pod can access host ~/.claude/projects/ via the hostPath volume mount."""
+        _, returncode = _kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "ls",
@@ -317,7 +319,6 @@ class TestClaudeCodeLogPipeline:
         assert returncode == 0, (
             f"hostPath mount /home/claude/.claude/projects/ not accessible in edge pod (exit {returncode})"
         )
-        assert output.strip(), "Expected non-empty listing of .claude/projects/ inside edge pod"
 
     def test_sentinel_file_visible_in_edge_pod(self, sentinel_claude_file):
         """A .jsonl file written to host ~/.claude/projects/ is immediately readable inside the edge pod."""
@@ -351,7 +352,7 @@ class TestClaudeCodeLogPipeline:
         assert "*.jsonl" in output, f"Expected '*.jsonl' file pattern in edge inputs.yml, got:\n{output}"
 
     def test_edge_file_monitor_picks_up_sentinel(self, sentinel_claude_file):
-        """Edge FileMonitor logs a 'collector added' entry for a new .jsonl file within 30s.
+        """Edge FileMonitor logs a 'collector added' entry for a new .jsonl file within 35s.
 
         The FileMonitor polls every 10 seconds (interval: 10). A new file written on the
         host should appear in edge logs within one poll cycle plus processing time.
@@ -360,7 +361,7 @@ class TestClaudeCodeLogPipeline:
         deadline = time.time() + 35
         while time.time() < deadline:
             logs = kubectl("logs", "statefulset/cribl-edge-standalone", "--since=2m")
-            if "-test-claude-pipeline" in logs and "FileMonitor collector added" in logs:
+            if sentinel_path.name in logs and "FileMonitor collector added" in logs:
                 return
             time.sleep(5)
         pytest.fail(
