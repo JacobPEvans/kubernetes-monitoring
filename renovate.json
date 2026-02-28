@@ -16,6 +16,8 @@
       "matchManagers": ["github-actions"],
       "matchPackagePrefixes": ["aquasecurity/"],
       "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "aquasecurity actions",
+      "groupSlug": "aquasecurity-actions",
       "automerge": true,
       "automergeType": "pr"
     }
