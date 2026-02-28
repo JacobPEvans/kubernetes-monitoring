@@ -18,6 +18,13 @@ from conftest import (
     port_forward_get,
 )
 
+EXPECTED_CRONJOBS = [
+    "pipeline-heartbeat",
+    "heartbeat-splunk",
+    "heartbeat-edge",
+    "heartbeat-otel",
+]
+
 EXPECTED_NETWORK_POLICIES = [
     "default-deny-all",
     "allow-dns-egress",
@@ -31,6 +38,10 @@ EXPECTED_NETWORK_POLICIES = [
     "allow-stream-ui-ingress",
     "allow-mcp-egress",
     "allow-mcp-ingress",
+    "allow-heartbeat-egress",
+    "allow-heartbeat-splunk-egress",
+    "allow-heartbeat-edge-egress",
+    "allow-heartbeat-otel-egress",
 ]
 
 
@@ -219,6 +230,15 @@ class TestMcpServerNodePort:
             f"Expected protocolVersion '2025-03-26', got: '{result.get('protocolVersion')}'"
         )
         assert "serverInfo" in result, f"Expected 'serverInfo' in result, got: {result}"
+
+
+@pytest.mark.usefixtures("cluster_ready")
+class TestHeartbeatCronJobs:
+    @pytest.mark.parametrize("name", EXPECTED_CRONJOBS)
+    def test_cronjob_exists(self, name):
+        """Each heartbeat CronJob should exist in the monitoring namespace."""
+        data = kubectl_json("get", "cronjob", name)
+        assert data["metadata"]["name"] == name
 
 
 @pytest.mark.usefixtures("cluster_ready")

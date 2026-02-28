@@ -10,7 +10,7 @@ data:
     # Output and input config handled by CRIBL_BEFORE_START_CMD env vars.
     # Runs as postStart lifecycle hook on every pod start.
     RETRIES=0
-    MAX_RETRIES=90
+    MAX_RETRIES=150
     AUTH=""
 
     # Phase 1: Wait for auth API

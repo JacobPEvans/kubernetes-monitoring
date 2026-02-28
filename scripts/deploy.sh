@@ -96,6 +96,22 @@ else
   echo "  SKIPPED: ai-api-keys (no API keys set)"
 fi
 
+# Heartbeat config (healthchecks.io ping URLs from SOPS)
+HB_ARGS=()
+[ -n "${HEALTHCHECKS_STREAM_URL:-}" ] && HB_ARGS+=(--from-literal=stream-url="$HEALTHCHECKS_STREAM_URL")
+[ -n "${HEALTHCHECKS_SPLUNK_URL:-}" ] && HB_ARGS+=(--from-literal=splunk-url="$HEALTHCHECKS_SPLUNK_URL")
+[ -n "${HEALTHCHECKS_EDGE_URL:-}" ] && HB_ARGS+=(--from-literal=edge-url="$HEALTHCHECKS_EDGE_URL")
+[ -n "${HEALTHCHECKS_OTEL_URL:-}" ] && HB_ARGS+=(--from-literal=otel-url="$HEALTHCHECKS_OTEL_URL")
+if [ ${#HB_ARGS[@]} -gt 0 ]; then
+  kubectl --context "$CONTEXT" create secret generic heartbeat-config \
+    --namespace "$NAMESPACE" \
+    "${HB_ARGS[@]}" \
+    --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
+  echo "  Created: heartbeat-config"
+else
+  echo "  SKIPPED: heartbeat-config (no HEALTHCHECKS_*_URL set)"
+fi
+
 # Cribl MCP server config (CRIBL_BASE_URL from cloud-secrets, MCP_API_KEY from iac-conf-mgmt DEFAULT_PASSWORD)
 MCP_BASE_URL="${CRIBL_BASE_URL:-}"
 if [ -n "$MCP_BASE_URL" ]; then
@@ -136,9 +152,11 @@ echo "--- Step 4: Waiting for rollouts ---"
 declare -A timeouts=(
   [otel-collector]=120s
   [cribl-edge-managed]=120s
-  [cribl-edge-standalone]=120s
-  # 240s accounts for PVC provisioning + startupProbe (30 failures × 10s = 300s max)
-  [cribl-stream-standalone]=240s
+  # 420s: startupProbe max (10s + 30×10s = 310s) + postStart setup-edge.sh (MAX_RETRIES=150, 2s sleep = 300s max)
+  # The postStart hook runs concurrently with the startupProbe; 420s gives ample margin for cold starts.
+  [cribl-edge-standalone]=420s
+  # 300s accounts for PVC provisioning + startupProbe (30 failures × 10s = 300s max)
+  [cribl-stream-standalone]=300s
   [cribl-mcp-server]=120s
 )
 

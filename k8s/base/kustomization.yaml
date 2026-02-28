@@ -18,6 +18,10 @@ resources:
   - cribl-mcp-server/
   # Pipeline heartbeat CronJob (dead-man's switch)
   - pipeline-heartbeat/
+  # Healthchecks.io heartbeat CronJobs
+  - heartbeat-splunk/
+  - heartbeat-edge/
+  - heartbeat-otel/
   # Network policies
   - network-policies/
 

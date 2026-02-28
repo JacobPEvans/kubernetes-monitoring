@@ -1,10 +1,10 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: pipeline-heartbeat
+  name: heartbeat-edge
   namespace: monitoring
   labels:
-    app: pipeline-heartbeat
+    app: heartbeat-edge
 spec:
   schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid
@@ -15,7 +15,7 @@ spec:
       template:
         metadata:
           labels:
-            app: pipeline-heartbeat
+            app: heartbeat-edge
         spec:
           restartPolicy: Never
           securityContext:
@@ -27,14 +27,14 @@ spec:
               command: ["sh", "-c"]
               args:
                 - |
-                  curl -sf --fail-with-body http://cribl-stream-standalone:9000/api/v1/health \
+                  curl -sf http://cribl-edge-standalone:9420/api/v1/health \
                   && { [ -z "${HC_PING_URL:-}" ] || curl -fsS -m 10 --retry 5 -o /dev/null "$HC_PING_URL"; }
               env:
                 - name: HC_PING_URL
                   valueFrom:
                     secretKeyRef:
                       name: heartbeat-config
-                      key: stream-url
+                      key: edge-url
                       optional: true
               securityContext:
                 allowPrivilegeEscalation: false

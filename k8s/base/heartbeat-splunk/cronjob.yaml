@@ -1,10 +1,10 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: pipeline-heartbeat
+  name: heartbeat-splunk
   namespace: monitoring
   labels:
-    app: pipeline-heartbeat
+    app: heartbeat-splunk
 spec:
   schedule: "*/5 * * * *"
   concurrencyPolicy: Forbid
@@ -15,7 +15,7 @@ spec:
       template:
         metadata:
           labels:
-            app: pipeline-heartbeat
+            app: heartbeat-splunk
         spec:
           restartPolicy: Never
           securityContext:
@@ -27,14 +27,23 @@ spec:
               command: ["sh", "-c"]
               args:
                 - |
-                  curl -sf --fail-with-body http://cribl-stream-standalone:9000/api/v1/health \
+                  [ -n "${SPLUNK_HEC_URL:-}" ] || exit 0
+                  HEALTH_URL="${SPLUNK_HEC_URL%/services/collector}/services/collector/health"
+                  # Splunk uses a self-signed TLS certificate; -k skips verification
+                  curl -sf -k "$HEALTH_URL" \
                   && { [ -z "${HC_PING_URL:-}" ] || curl -fsS -m 10 --retry 5 -o /dev/null "$HC_PING_URL"; }
               env:
+                - name: SPLUNK_HEC_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: splunk-hec-config
+                      key: url
+                      optional: true
                 - name: HC_PING_URL
                   valueFrom:
                     secretKeyRef:
                       name: heartbeat-config
-                      key: stream-url
+                      key: splunk-url
                       optional: true
               securityContext:
                 allowPrivilegeEscalation: false

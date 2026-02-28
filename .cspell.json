@@ -59,7 +59,8 @@
     "elif",
     "isinstance",
     "retryable",
-    "httpevent"
+    "httpevent",
+    "healthchecks"
   ],
   "ignorePaths": [
     "packs/",

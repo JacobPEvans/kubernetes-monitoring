@@ -3,7 +3,7 @@
 These tests verify data flows correctly through the pipeline:
   A2: Host Filesystem → Cribl Edge Standalone (file monitor)
   A4: OTEL Collector → Cribl Stream Standalone (gRPC :4317)
-  A5: Cribl Edge Standalone → Cribl Stream Standalone (HTTP :10080)
+  A5: Cribl Edge Standalone → Cribl Stream Standalone (HEC :8088)
   A7: Cribl Stream Standalone → Splunk HEC (:8088 HEC)
 """
 
