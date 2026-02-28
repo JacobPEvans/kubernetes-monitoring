@@ -49,14 +49,13 @@ spec:
             - name: CRIBL_EDGE_API_HOST
               value: "0.0.0.0"
             - name: CRIBL_BEFORE_START_CMD_1
-              value: "mkdir -p ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge"
-            - name: CRIBL_BEFORE_START_CMD_2
-              value: "cp /var/tmp/cribl-config/outputs.yml ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/outputs.yml"
-            - name: CRIBL_BEFORE_START_CMD_3
               value: |
+                set -eu
+                mkdir -p "${CRIBL_VOLUME_DIR}/local/edge"
+                cp /var/tmp/cribl-config/outputs.yml "${CRIBL_VOLUME_DIR}/local/edge/outputs.yml"
                 sed "s|__CLAUDE_HOME__|$CLAUDE_HOME|g" \
                   /var/tmp/cribl-config/inputs-override.yml \
-                  > ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/inputs.yml
+                  > "${CRIBL_VOLUME_DIR}/local/edge/inputs.yml"
           volumeMounts:
             - name: claude-logs
               mountPath: /home/claude/.claude
