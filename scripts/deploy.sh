@@ -152,8 +152,9 @@ echo "--- Step 4: Waiting for rollouts ---"
 declare -A timeouts=(
   [otel-collector]=120s
   [cribl-edge-managed]=120s
-  # 300s accounts for startupProbe (initialDelay 10s + 30 failures × 10s = 310s max)
-  [cribl-edge-standalone]=300s
+  # 420s: startupProbe max (10s + 30×10s = 310s) + postStart setup-edge.sh (MAX_RETRIES=150, 2s sleep = 300s max)
+  # The postStart hook runs concurrently with the startupProbe; 420s gives ample margin for cold starts.
+  [cribl-edge-standalone]=420s
   # 300s accounts for PVC provisioning + startupProbe (30 failures × 10s = 300s max)
   [cribl-stream-standalone]=300s
   [cribl-mcp-server]=120s
