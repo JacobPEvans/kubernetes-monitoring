@@ -152,9 +152,10 @@ echo "--- Step 4: Waiting for rollouts ---"
 declare -A timeouts=(
   [otel-collector]=120s
   [cribl-edge-managed]=120s
-  [cribl-edge-standalone]=120s
-  # 240s accounts for PVC provisioning + startupProbe (30 failures × 10s = 300s max)
-  [cribl-stream-standalone]=240s
+  # 300s accounts for startupProbe (initialDelay 10s + 30 failures × 10s = 310s max)
+  [cribl-edge-standalone]=300s
+  # 300s accounts for PVC provisioning + startupProbe (30 failures × 10s = 300s max)
+  [cribl-stream-standalone]=300s
   [cribl-mcp-server]=120s
 )
 
