@@ -27,9 +27,11 @@ spec:
               command: ["sh", "-c"]
               args:
                 - |
+                  [ -n "${SPLUNK_HEC_URL:-}" ] || exit 0
                   HEALTH_URL="${SPLUNK_HEC_URL%/services/collector}/services/collector/health"
+                  # Splunk uses a self-signed TLS certificate; -k skips verification
                   curl -sf -k "$HEALTH_URL" \
-                  && curl -fsS -m 10 --retry 5 -o /dev/null "${HC_PING_URL}"
+                  && { [ -z "${HC_PING_URL:-}" ] || curl -fsS -m 10 --retry 5 -o /dev/null "$HC_PING_URL"; }
               env:
                 - name: SPLUNK_HEC_URL
                   valueFrom:

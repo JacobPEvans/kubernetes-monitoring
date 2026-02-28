@@ -28,7 +28,7 @@ spec:
               args:
                 - |
                   curl -sf http://otel-collector:13133/ \
-                  && curl -fsS -m 10 --retry 5 -o /dev/null "${HC_PING_URL}"
+                  && { [ -z "${HC_PING_URL:-}" ] || curl -fsS -m 10 --retry 5 -o /dev/null "$HC_PING_URL"; }
               env:
                 - name: HC_PING_URL
                   valueFrom:

@@ -97,17 +97,19 @@ else
 fi
 
 # Heartbeat config (healthchecks.io ping URLs from SOPS)
-if [ -n "${HEALTHCHECKS_STREAM_URL:-}" ]; then
+HB_ARGS=()
+[ -n "${HEALTHCHECKS_STREAM_URL:-}" ] && HB_ARGS+=(--from-literal=stream-url="$HEALTHCHECKS_STREAM_URL")
+[ -n "${HEALTHCHECKS_SPLUNK_URL:-}" ] && HB_ARGS+=(--from-literal=splunk-url="$HEALTHCHECKS_SPLUNK_URL")
+[ -n "${HEALTHCHECKS_EDGE_URL:-}" ] && HB_ARGS+=(--from-literal=edge-url="$HEALTHCHECKS_EDGE_URL")
+[ -n "${HEALTHCHECKS_OTEL_URL:-}" ] && HB_ARGS+=(--from-literal=otel-url="$HEALTHCHECKS_OTEL_URL")
+if [ ${#HB_ARGS[@]} -gt 0 ]; then
   kubectl --context "$CONTEXT" create secret generic heartbeat-config \
     --namespace "$NAMESPACE" \
-    --from-literal=stream-url="$HEALTHCHECKS_STREAM_URL" \
-    --from-literal=splunk-url="${HEALTHCHECKS_SPLUNK_URL:-}" \
-    --from-literal=edge-url="${HEALTHCHECKS_EDGE_URL:-}" \
-    --from-literal=otel-url="${HEALTHCHECKS_OTEL_URL:-}" \
+    "${HB_ARGS[@]}" \
     --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
   echo "  Created: heartbeat-config"
 else
-  echo "  SKIPPED: heartbeat-config (HEALTHCHECKS_STREAM_URL not set)"
+  echo "  SKIPPED: heartbeat-config (no HEALTHCHECKS_*_URL set)"
 fi
 
 # Cribl MCP server config (CRIBL_BASE_URL from cloud-secrets, MCP_API_KEY from iac-conf-mgmt DEFAULT_PASSWORD)
