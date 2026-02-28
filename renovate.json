@@ -1,6 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": [
+    "config:recommended",
+    "local>JacobPEvans/.github:renovate-presets"
+  ],
   "packageRules": [
     {
       "description": "Group all dependency updates into a single PR",
@@ -9,30 +12,10 @@
       "groupSlug": "all-dependencies"
     },
     {
-      "description": "Tier 1: Automerge own and official GitHub Actions (all update types)",
+      "description": "Automerge minor/patch from aquasecurity",
       "matchManagers": ["github-actions"],
-      "matchPackagePrefixes": ["actions/", "JacobPEvans/"],
-      "groupName": "github-actions-trusted",
-      "groupSlug": "github-actions-trusted",
-      "automerge": true,
-      "automergeType": "squash"
-    },
-    {
-      "description": "Tier 2: Automerge minor/patch from vetted well-known publishers",
-      "matchManagers": ["github-actions"],
-      "matchPackagePrefixes": ["aquasecurity/", "googleapis/"],
+      "matchPackagePrefixes": ["aquasecurity/"],
       "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "github-actions-vetted",
-      "groupSlug": "github-actions-vetted",
-      "automerge": true,
-      "automergeType": "squash"
-    },
-    {
-      "description": "Automerge pre-commit minor and patch updates",
-      "matchManagers": ["pre-commit"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "pre-commit hooks",
-      "groupSlug": "pre-commit-hooks",
       "automerge": true,
       "automergeType": "squash"
     }
