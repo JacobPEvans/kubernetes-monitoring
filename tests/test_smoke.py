@@ -31,6 +31,10 @@ EXPECTED_NETWORK_POLICIES = [
     "allow-stream-ui-ingress",
     "allow-mcp-egress",
     "allow-mcp-ingress",
+    "allow-heartbeat-egress",
+    "allow-heartbeat-splunk-egress",
+    "allow-heartbeat-edge-egress",
+    "allow-heartbeat-otel-egress",
 ]
 
 

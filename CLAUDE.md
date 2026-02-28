@@ -37,6 +37,10 @@ Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 See [Architecture Diagram](docs/ARCHITECTURE.md) for the full data flow and test coverage map.
 
+Four CronJobs ping [healthchecks.io](https://healthchecks.io) every 5 minutes as dead-man's switches:
+`pipeline-heartbeat` (Stream), `heartbeat-splunk`, `heartbeat-edge`, `heartbeat-otel`.
+Ping URLs stored in SOPS (`healthchecks_*_url` keys), injected as `heartbeat-config` secret by `deploy.sh`.
+
 Five StatefulSets in the monitoring namespace:
 
 | StatefulSet | Role | UI |

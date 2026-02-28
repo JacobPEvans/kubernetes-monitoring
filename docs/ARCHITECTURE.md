@@ -14,6 +14,7 @@ flowchart LR
     CriblCloud["Cribl Cloud\n(external)"]
     McpServer["cribl-mcp-server\nNodePort :30030"]
     ClaudeCode["Claude Code\n(macOS)"]
+    HCio["healthchecks.io\n(external)"]
 
     Client -->|"A1: OTLP gRPC/HTTP"| OtelCollector
     HostFS -->|"A2: file input"| EdgeStandalone
@@ -24,6 +25,10 @@ flowchart LR
     StreamStandalone -->|"A7: HEC HTTPS"| SplunkHEC
     ClaudeCode -->|"A8: MCP HTTP :30030"| McpServer
     McpServer -->|"A9: API HTTPS :443"| CriblCloud
+    StreamStandalone -->|"H1: health :9000"| HCio
+    SplunkHEC -->|"H2: health :8088"| HCio
+    EdgeStandalone -->|"H3: health :9420"| HCio
+    OtelCollector -->|"H4: health :13133"| HCio
 ```
 
 ## Test Coverage Map
@@ -40,3 +45,7 @@ flowchart LR
 | A2+A5+A7 | Full .claude/projects pipeline (E2E) | `test_file_events_reach_splunk_realtime` ✓Splunk | test_forwarding.py |
 | A8 | Claude Code → MCP Server | `test_mcp_initialize_returns_200`, `test_mcp_response_content_type`, `test_mcp_initialize_protocol_version` | test_smoke.py |
 | A9 | MCP Server → Cribl Cloud | Not locally testable (cloud-managed) | — |
+| H1 | pipeline-heartbeat → Stream health → healthchecks.io | `test_network_policy_exists[allow-heartbeat-egress]` | test_smoke.py |
+| H2 | heartbeat-splunk → Splunk HEC health → healthchecks.io | `test_network_policy_exists[allow-heartbeat-splunk-egress]` | test_smoke.py |
+| H3 | heartbeat-edge → Edge health → healthchecks.io | `test_network_policy_exists[allow-heartbeat-edge-egress]` | test_smoke.py |
+| H4 | heartbeat-otel → OTEL health → healthchecks.io | `test_network_policy_exists[allow-heartbeat-otel-egress]` | test_smoke.py |

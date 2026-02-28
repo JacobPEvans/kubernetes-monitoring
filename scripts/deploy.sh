@@ -96,6 +96,20 @@ else
   echo "  SKIPPED: ai-api-keys (no API keys set)"
 fi
 
+# Heartbeat config (healthchecks.io ping URLs from SOPS)
+if [ -n "${HEALTHCHECKS_STREAM_URL:-}" ]; then
+  kubectl --context "$CONTEXT" create secret generic heartbeat-config \
+    --namespace "$NAMESPACE" \
+    --from-literal=stream-url="$HEALTHCHECKS_STREAM_URL" \
+    --from-literal=splunk-url="${HEALTHCHECKS_SPLUNK_URL:-}" \
+    --from-literal=edge-url="${HEALTHCHECKS_EDGE_URL:-}" \
+    --from-literal=otel-url="${HEALTHCHECKS_OTEL_URL:-}" \
+    --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
+  echo "  Created: heartbeat-config"
+else
+  echo "  SKIPPED: heartbeat-config (HEALTHCHECKS_STREAM_URL not set)"
+fi
+
 # Cribl MCP server config (CRIBL_BASE_URL from cloud-secrets, MCP_API_KEY from iac-conf-mgmt DEFAULT_PASSWORD)
 MCP_BASE_URL="${CRIBL_BASE_URL:-}"
 if [ -n "$MCP_BASE_URL" ]; then
