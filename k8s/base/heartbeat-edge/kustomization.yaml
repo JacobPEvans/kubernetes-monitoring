@@ -3,4 +3,5 @@ kind: Kustomization
 
 resources:
   - networkpolicy.yaml
+  - rbac.yaml
   - cronjob.yaml

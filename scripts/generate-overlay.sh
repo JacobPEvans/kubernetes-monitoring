@@ -118,13 +118,6 @@ spec:
           hostPath:
             path: ${HOME_DIR}/logs/ai-jobs
             type: DirectoryOrCreate
-        - name: cribl-config
-          configMap:
-            name: cribl-edge-standalone-config
-        - name: pack-source
-          hostPath:
-            path: ${REPO_ROOT}/packs
-            type: DirectoryOrCreate
         - name: cribl-config-templates
           configMap:
             name: cribl-edge-standalone-config

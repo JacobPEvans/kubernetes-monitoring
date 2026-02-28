@@ -10,13 +10,6 @@ spec:
   policyTypes:
     - Egress
   egress:
-    - to:
-        - podSelector:
-            matchLabels:
-              app: cribl-edge-standalone
-      ports:
-        - port: 9420
-          protocol: TCP
     - ports:
         - port: 443
           protocol: TCP

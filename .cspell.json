@@ -60,7 +60,8 @@
     "isinstance",
     "retryable",
     "httpevent",
-    "healthchecks"
+    "healthchecks",
+    "fileconsumer"
   ],
   "ignorePaths": [
     "packs/",

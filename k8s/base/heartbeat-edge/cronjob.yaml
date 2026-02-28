@@ -18,6 +18,7 @@ spec:
             app: heartbeat-edge
         spec:
           restartPolicy: Never
+          serviceAccountName: heartbeat-edge
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
@@ -27,7 +28,11 @@ spec:
               command: ["sh", "-c"]
               args:
                 - |
-                  curl -sf http://cribl-edge-standalone:9420/api/v1/health \
+                  curl -sf \
+                    --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                    -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+                    "https://kubernetes.default.svc/api/v1/namespaces/monitoring/pods/cribl-edge-standalone-0" \
+                  | grep -qE '"ready"[[:space:]]*:[[:space:]]*true' \
                   && { [ -z "${HC_PING_URL:-}" ] || curl -fsS -m 10 --retry 5 -o /dev/null "$HC_PING_URL"; }
               env:
                 - name: HC_PING_URL
