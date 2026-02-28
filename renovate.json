@@ -17,7 +17,7 @@
       "matchPackagePrefixes": ["aquasecurity/"],
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true,
-      "automergeType": "squash"
+      "automergeType": "pr"
     }
   ]
 }
