@@ -16,8 +16,13 @@ def parse_otel_error_lines(log_text: str) -> list[str]:
     Lines with \\terror\\t are error-level operational entries.
     Info-level retry lines (e.g. "Exporting failed. Will retry...") are
     expected transient noise and are excluded.
+
+    "Failed to open file" errors from fileconsumer are also excluded — they
+    occur when the OTEL collector tracks pod log paths that get cleaned up
+    after short-lived pods (CronJobs) complete. This is expected OS-level
+    noise and does not indicate a pipeline failure.
     """
-    return [line for line in log_text.splitlines() if "\terror\t" in line]
+    return [line for line in log_text.splitlines() if "\terror\t" in line and "Failed to open file" not in line]
 
 
 def find_flowing_stats(log_text: str) -> list[str]:

@@ -1,0 +1,33 @@
+---
+# ServiceAccount for heartbeat-edge pods to query Kubernetes API for pod readiness.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: heartbeat-edge
+  namespace: monitoring
+---
+# Role granting read access to the cribl-edge-standalone-0 pod status.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: heartbeat-edge-reader
+  namespace: monitoring
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    resourceNames: ["cribl-edge-standalone-0"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: heartbeat-edge-reader
+  namespace: monitoring
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: heartbeat-edge-reader
+subjects:
+  - kind: ServiceAccount
+    name: heartbeat-edge
+    namespace: monitoring

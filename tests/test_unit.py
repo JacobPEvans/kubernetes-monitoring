@@ -32,6 +32,18 @@ class TestParseOtelErrorLines:
         result = parse_otel_error_lines("\n".join(lines))
         assert result == [lines[1]]
 
+    def test_excludes_failed_to_open_file_errors(self):
+        """fileconsumer 'Failed to open file' errors are expected noise from CronJob pod cleanup."""
+        stale_path = "/var/log/pods/monitoring_pipeline-heartbeat-123_abc/heartbeat/0.log"
+        noisy = (
+            "2024-01-01T00:00:00Z\terror\tfileconsumer/file.go:211\tFailed to open file\t"
+            f'{{"error":"open {stale_path}: no such file or directory"}}'
+        )
+        real_error = "2024-01-01T00:00:01Z\terror\texporter/exporter.go:99\texport failed\t{}"
+        result = parse_otel_error_lines(f"{noisy}\n{real_error}")
+        assert result == [real_error]
+        assert noisy not in result
+
 
 class TestFindFlowingStats:
     def _make_stat_line(self, message="_raw stats", out_events=1, out_bytes=100, **kwargs):

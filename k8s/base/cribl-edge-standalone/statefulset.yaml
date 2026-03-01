@@ -49,20 +49,13 @@ spec:
             - name: CRIBL_EDGE_API_HOST
               value: "0.0.0.0"
             - name: CRIBL_BEFORE_START_CMD_1
-              value: "mkdir -p ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cc-edge-claude-code"
-            - name: CRIBL_BEFORE_START_CMD_2
-              value: "cp /var/tmp/cribl-config/outputs.yml ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/outputs.yml"
-            - name: CRIBL_BEFORE_START_CMD_3
               value: |
+                set -eu
+                mkdir -p "${CRIBL_VOLUME_DIR}/local/edge"
+                cp /var/tmp/cribl-config/outputs.yml "${CRIBL_VOLUME_DIR}/local/edge/outputs.yml"
                 sed "s|__CLAUDE_HOME__|$CLAUDE_HOME|g" \
                   /var/tmp/cribl-config/inputs-override.yml \
-                  > ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cc-edge-claude-code/inputs.yml
-          lifecycle:
-            postStart:
-              exec:
-                command:
-                  - /bin/sh
-                  - /opt/cribl-scripts/setup-edge.sh
+                  > "${CRIBL_VOLUME_DIR}/local/edge/inputs.yml"
           volumeMounts:
             - name: claude-logs
               mountPath: /home/claude/.claude
@@ -81,13 +74,6 @@ spec:
               readOnly: true
             - name: cribl-data
               mountPath: /opt/cribl/data
-            - name: cribl-config-templates
-              mountPath: /opt/cribl-scripts/setup-edge.sh
-              subPath: setup-edge.sh
-              readOnly: true
-            - name: pack-source
-              mountPath: /packs
-              readOnly: true
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -107,7 +93,7 @@ spec:
                 - "curl -sf http://127.0.0.1:9420/api/v1/health || exit 1"
             initialDelaySeconds: 10
             periodSeconds: 10
-            failureThreshold: 30
+            failureThreshold: 90
           livenessProbe:
             exec:
               command:
@@ -142,10 +128,6 @@ spec:
         - name: ai-job-logs
           hostPath:
             path: PLACEHOLDER_HOME_DIR/logs/ai-jobs
-            type: DirectoryOrCreate
-        - name: pack-source
-          hostPath:
-            path: PLACEHOLDER_HOME_DIR/git/kubernetes-monitoring/main/packs
             type: DirectoryOrCreate
         - name: cribl-config-templates
           configMap:

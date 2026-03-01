@@ -351,9 +351,12 @@ class TestClaudeCodeLogPipeline:
             "--",
             "sh",
             "-c",
-            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/cc-edge-claude-code/inputs.yml",
+            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/inputs.yml",
         )
-        assert returncode == 0, f"Could not read edge pack inputs.yml (exit {returncode}). Pack may not be installed."
+        assert returncode == 0, (
+            f"Could not read edge inputs.yml (exit {returncode}). "
+            "Check that CRIBL_BEFORE_START_CMD wrote inputs.yml to local/edge/."
+        )
         assert "/home/claude/.claude/projects/" in output, (
             f"Expected '/home/claude/.claude/projects/' in edge inputs.yml, got:\n{output}"
         )
@@ -408,10 +411,15 @@ class TestClaudeCodeLogPipeline:
         The pack inputs are in the worker namespace and not listed by /api/v1/system/inputs,
         so we verify activity via pod logs which show FileMonitor collector messages.
         """
-        logs = kubectl("logs", "statefulset/cribl-edge-standalone", "--since=5m")
-        assert "FileMonitor collector added" in logs or "cc-edge-claude-code" in logs, (
-            "Edge file monitor is not active — pack may not be installed or inputs.yml was not loaded. "
-            "Check that cc-edge-claude-code pack is installed and inputs.yml was injected correctly."
+        # Fetch all logs since the current container started (no --since window) to avoid
+        # a time-dependent failure: "FileMonitor collector added" appears at startup and
+        # when new files are found, so a --since=5m window would miss it if the pod has
+        # been running longer than that without new files. Full container logs are always
+        # bounded by the current container's uptime.
+        logs = kubectl("logs", "statefulset/cribl-edge-standalone")
+        assert "FileMonitor collector added" in logs, (
+            "Edge file monitor is not active — inputs.yml may not have been loaded. "
+            "Check that CRIBL_BEFORE_START_CMD wrote inputs.yml to local/edge/ correctly."
         )
 
     def test_file_events_reach_splunk_realtime(self, sentinel_claude_file, splunk_client):
