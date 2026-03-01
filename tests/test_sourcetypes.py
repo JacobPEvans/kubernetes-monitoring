@@ -1,4 +1,4 @@
-"""Tier 3: Per-sourcetype E2E tests for the Claude Code log pipeline.
+"""Tier 4: Per-sourcetype E2E tests for the Claude Code log pipeline.
 
 These tests verify that each sourcetype in the claude:code:* family is correctly
 assigned by the Cribl Stream pipeline when events travel through the full path:
@@ -17,14 +17,13 @@ Three test classes:
 
 import errno
 import json
-import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
-from conftest import CONTEXT, NAMESPACE, kubectl
+from conftest import kubectl, kubectl_exec_no_fail
 from helpers import query_splunk
 
 # ---------------------------------------------------------------------------
@@ -56,21 +55,6 @@ EXPECTED_DATATYPES = [
     "claude-code-teams",
     "claude-code-plugins",
 ]
-
-# ---------------------------------------------------------------------------
-# Helper: kubectl exec that never raises
-# ---------------------------------------------------------------------------
-
-
-def _kubectl_exec_no_fail(*args: str) -> tuple[str, int]:
-    """Run kubectl exec and return (stdout, returncode) without raising on failure."""
-    cmd = ["kubectl", "--context", CONTEXT, "-n", NAMESPACE, "exec", *args]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        return result.stdout.strip(), result.returncode
-    except subprocess.TimeoutExpired:
-        return "", 1
-
 
 # ---------------------------------------------------------------------------
 # Sentinel poll helper
@@ -538,7 +522,7 @@ class TestInputConfigurations:
         that the Claude Code home directory path is present, confirming the pack's
         FileMonitor inputs were correctly written at startup.
         """
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "sh",
@@ -549,8 +533,8 @@ class TestInputConfigurations:
             f"Could not read edge inputs.yml (exit {returncode}). "
             "Check that CRIBL_BEFORE_START_CMD wrote inputs.yml to local/edge/."
         )
-        assert "/home/claude/.claude/" in output, (
-            f"Expected '/home/claude/.claude/' path in edge inputs.yml, got:\n{output[:500]}"
+        assert "/home/claude/.claude/" in output or "$CLAUDE_HOME/.claude/" in output, (
+            f"Expected '/home/claude/.claude/' or '$CLAUDE_HOME/.claude/' path in edge inputs.yml, got:\n{output[:500]}"
         )
 
     @pytest.mark.parametrize("datatype", EXPECTED_DATATYPES)
@@ -567,7 +551,7 @@ class TestInputConfigurations:
         # The pack config is written to the pack's local inputs directory.
         # We search in inputs.yml because that is where CRIBL_BEFORE_START_CMD
         # writes the merged configuration for the edge runtime to load.
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "sh",

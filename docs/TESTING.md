@@ -83,10 +83,11 @@ Shared utility functions:
 
 ### `tests/conftest.py`
 
-Shared fixtures:
+Shared fixtures and helpers:
 
 - `cluster_ready`: Session fixture, skips all tests if OrbStack unreachable
 - `splunk_client`: Returns `(mgmt_url, admin_password)` from `splunk-hec-config` secret; skips if keys absent
+- `kubectl_exec_no_fail(*args)`: Run `kubectl exec` returning `(stdout, return_code)` without raising on failure
 
 ## Running Specific Tests
 

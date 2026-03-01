@@ -121,6 +121,16 @@ def port_forward_get(
         proc.wait()
 
 
+def kubectl_exec_no_fail(*args: str) -> tuple[str, int]:
+    """Run kubectl exec and return (stdout, returncode) without raising on failure."""
+    cmd = ["kubectl", "--context", CONTEXT, "-n", NAMESPACE, "exec", *args]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        return result.stdout.strip(), result.returncode
+    except subprocess.TimeoutExpired:
+        return "", 1
+
+
 @pytest.fixture(scope="session")
 def splunk_client(cluster_ready):
     """Return (mgmt_url, admin_password) for Splunk REST API queries.

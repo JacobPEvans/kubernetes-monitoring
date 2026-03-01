@@ -9,7 +9,6 @@ These tests verify data flows correctly through the pipeline:
 
 import errno
 import json
-import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
@@ -17,13 +16,12 @@ from pathlib import Path
 
 import pytest
 from conftest import (
-    CONTEXT,
-    NAMESPACE,
     OTEL_GRPC_ENDPOINT,
     PF_STREAM_INPUTS_A4,
     PF_STREAM_INPUTS_A5,
     PF_STREAM_OUTPUTS,
     kubectl,
+    kubectl_exec_no_fail,
     kubectl_secret,
     kubectl_secret_values,
     port_forward_get,
@@ -43,16 +41,6 @@ def _send_trace(test_id: str) -> None:
     with tracer.start_as_current_span("forward-test-span") as span:
         span.set_attribute("test.id", test_id)
     provider.shutdown()
-
-
-def _kubectl_exec_no_fail(*args: str) -> tuple[str, int]:
-    """Run kubectl exec and return (stdout, returncode) without raising on failure."""
-    cmd = ["kubectl", "--context", CONTEXT, "-n", NAMESPACE, "exec", *args]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        return result.stdout.strip(), result.returncode
-    except subprocess.TimeoutExpired:
-        return "", 1
 
 
 @pytest.mark.usefixtures("cluster_ready")
@@ -99,7 +87,7 @@ class TestEdgeToStreamForwarding:
 
     def test_edge_to_stream_connectivity(self):
         """Cribl Edge Standalone should be able to reach Cribl Stream data port on :10080."""
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "curl",
@@ -141,7 +129,7 @@ class TestStreamToSplunkForwarding:
         """Splunk HEC health endpoint should return HTTP 200 with 'HEC is healthy' from stream pod."""
         hec_url = kubectl_secret("splunk-hec-config", "url")
         health_url = hec_url.replace("/services/collector", "/services/collector/health")
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone",
             "--",
             "curl",
@@ -169,7 +157,7 @@ class TestStreamToSplunkForwarding:
         """Posting to Splunk HEC with the real token should return HTTP 200 with Success body."""
         secrets = kubectl_secret_values("splunk-hec-config", ["token", "url"])
         token, url = secrets["token"], secrets["url"]
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone",
             "--",
             "curl",
@@ -201,7 +189,7 @@ class TestStreamToSplunkForwarding:
     def test_splunk_hec_url_matches_secret(self):
         """URL in splunk-hec-config secret should match the URL in Cribl Stream's outputs config."""
         secret_url = kubectl_secret("splunk-hec-config", "url")
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-stream-standalone",
             "--",
             "sh",
@@ -318,7 +306,7 @@ class TestClaudeCodeLogPipeline:
 
     def test_claude_home_mount_accessible(self):
         """Edge pod can access host ~/.claude/projects/ via the hostPath volume mount."""
-        _, returncode = _kubectl_exec_no_fail(
+        _, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "ls",
@@ -332,7 +320,7 @@ class TestClaudeCodeLogPipeline:
         """A .jsonl file written to host ~/.claude/projects/ is immediately readable inside the edge pod."""
         sentinel_path, sentinel_id = sentinel_claude_file
         pod_path = f"/home/claude/.claude/projects/-test-claude-pipeline/{sentinel_path.name}"
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "cat",
@@ -351,7 +339,7 @@ class TestClaudeCodeLogPipeline:
         Check the pack's inputs.yml or the runtime-merged inputs for the expected path.
         """
         # Try pack config first, fall back to local/edge/inputs.yml
-        output, returncode = _kubectl_exec_no_fail(
+        output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "sh",
@@ -393,7 +381,7 @@ class TestClaudeCodeLogPipeline:
         Directly catches the failure mode where CRIBL_VOLUME_DIR is unset and the runtime
         ignores config written to /opt/cribl/local/, leaving only the built-in devnull output.
         """
-        output, _ = _kubectl_exec_no_fail(
+        output, _ = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "sh",
