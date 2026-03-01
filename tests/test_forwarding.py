@@ -218,14 +218,21 @@ class TestStreamToSplunkForwarding:
         not just outEvents (which counts pipeline-internal routing). Since splunk-hec is
         the only non-default output and all routes lead there, outBytes > 0 confirms
         data was physically sent to Splunk HEC.
+
+        Polls with a deadline because _raw stats are emitted periodically (every ~10s)
+        and may not appear in logs immediately after a fresh pod restart.
         """
         _send_trace(str(uuid.uuid4()))
-        time.sleep(10)  # Allow pipeline processing
-        logs = kubectl("logs", "statefulset/cribl-stream-standalone", "--tail=100")
-        flowing = find_flowing_stats(logs)
-        assert flowing, (
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            logs = kubectl("logs", "statefulset/cribl-stream-standalone", "--tail=200")
+            flowing = find_flowing_stats(logs)
+            if flowing:
+                return
+            time.sleep(5)
+        pytest.fail(
             "Expected _raw stats with outBytes > 0 after sending trace "
-            "(data physically sent to splunk-hec), found none in last 100 log lines."
+            "(data physically sent to splunk-hec), found none within 60s."
         )
 
     def test_otlp_events_reach_splunk_realtime(self, splunk_client):
@@ -335,10 +342,9 @@ class TestClaudeCodeLogPipeline:
     def test_edge_file_monitor_config_path(self):
         """Edge pack input is configured to monitor /home/claude/.claude/projects/.
 
-        The pack is installed via CRIBL_BEFORE_START_CMD and provides its own inputs.
-        Check the pack's inputs.yml or the runtime-merged inputs for the expected path.
+        The pack is installed via CRIBL_BEFORE_START_CMD (curl + tar extract).
+        Check the pack's inputs.yml in local/edge/ for the expected path.
         """
-        # Try pack config first, fall back to local/edge/inputs.yml
         output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",

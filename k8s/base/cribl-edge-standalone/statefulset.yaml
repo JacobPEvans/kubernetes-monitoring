@@ -49,32 +49,23 @@ spec:
             - name: CRIBL_EDGE_API_HOST
               value: "0.0.0.0"
             - name: CRIBL_BEFORE_START_CMD_1
+              value: >-
+                mkdir -p ${CRIBL_VOLUME_DIR}/local/edge &&
+                cp /var/tmp/cribl-config/outputs.yml
+                ${CRIBL_VOLUME_DIR}/local/edge/outputs.yml
+            - name: CRIBL_BEFORE_START_CMD_2
               value: |
                 set -eu
-                # Install Claude Code collection pack config from GitHub release
-                # The .crbl is a tar.gz containing default/inputs.yml and default/pipelines/
-                # We extract these into Edge's local config dir (cribl pack install requires
-                # the API server which isn't running during CRIBL_BEFORE_START_CMD).
                 PACK_URL="https://github.com/JacobPEvans/cc-edge-claude-code-otel/releases/download/v2.0.0/cc-edge-claude-code-otel.crbl"
                 PACK_FILE="/tmp/cc-edge-claude-code-otel.crbl"
                 EDGE_DIR="${CRIBL_VOLUME_DIR}/local/edge"
-                mkdir -p "${EDGE_DIR}"
-                echo "Downloading pack from ${PACK_URL}..."
-                curl -sfL "${PACK_URL}" -o "${PACK_FILE}"
-                if [ -f "${PACK_FILE}" ]; then
-                  echo "Extracting pack config to ${EDGE_DIR}..."
-                  # Extract inputs and pipeline routes from the .crbl (tar.gz with root-level paths)
-                  tar --no-same-owner -xzf "${PACK_FILE}" -C /tmp default/inputs.yml default/pipelines/
-                  cp /tmp/default/inputs.yml "${EDGE_DIR}/inputs.yml"
-                  mkdir -p "${EDGE_DIR}/pipelines"
-                  cp /tmp/default/pipelines/route.yml "${EDGE_DIR}/pipelines/route.yml"
-                  rm -rf /tmp/default "${PACK_FILE}"
-                  echo "Pack config installed successfully"
-                else
-                  echo "WARNING: Pack download failed, Edge will run without Claude Code inputs"
-                fi
-                # Copy deployment-specific outputs (Stream HEC URL + token)
-                cp /var/tmp/cribl-config/outputs.yml "${EDGE_DIR}/outputs.yml"
+                curl -sfL "${PACK_URL}" -o "${PACK_FILE}" || { echo "WARNING: Pack download failed"; exit 0; }
+                tar --no-same-owner -xzf "${PACK_FILE}" -C /tmp default/inputs.yml default/pipelines/
+                cp /tmp/default/inputs.yml "${EDGE_DIR}/inputs.yml"
+                mkdir -p "${EDGE_DIR}/pipelines"
+                cp -r /tmp/default/pipelines/* "${EDGE_DIR}/pipelines/"
+                rm -rf /tmp/default "${PACK_FILE}"
+                echo "Pack config installed successfully"
           volumeMounts:
             - name: claude-logs
               mountPath: /home/claude/.claude
