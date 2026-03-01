@@ -57,7 +57,7 @@ Directory layout:
 - `k8s/overlays/local/` - Generated overlay with real volume paths (gitignored)
 - `scripts/` - Deployment and overlay generation scripts
 - `docker/` - Dockerfiles for ephemeral AI containers
-- `packs/` - (removed — pack now installed from [JacobPEvans/cc-edge-claude-code-otel](https://github.com/JacobPEvans/cc-edge-claude-code-otel) GitHub release at pod startup)
+- `packs/` - (removed — pack now installed from [JacobPEvans/cc-edge-claude-code-otel](https://github.com/JacobPEvans/cc-edge-claude-code-otel) GitHub release at pod startup). Note: the `.crbl` download has no checksum/signature verification. Acceptable for this local OrbStack dev stack where the pack repo is under the same developer's GitHub account; not suitable for production without integrity checks.
 - `docs/` - Extended documentation
 
 ## CI
