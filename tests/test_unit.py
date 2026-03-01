@@ -163,25 +163,32 @@ class TestSecurityExclusions:
     # Absolute path to the Edge standalone ConfigMap
     _CONFIGMAP_PATH = Path(__file__).parent.parent / "k8s/base/cribl-edge-standalone/configmap-cribl-config.yaml"
 
-    # Absolute path to the pack inputs file in the sibling repo
-    _PACK_INPUTS_PATH = Path("/Users/jevans/git/cc-edge-claude-code-otel/default/inputs.yml")
+    # Path to the pack inputs file in the sibling repo (adapts to any user's home directory)
+    _PACK_INPUTS_PATH = Path.home() / "git/cc-edge-claude-code-otel/default/inputs.yml"
 
-    def test_no_forbidden_patterns_in_edge_inputs_configmap(self):
-        """Edge ConfigMap must not contain inputs monitoring sensitive paths."""
+    def test_configmap_has_no_input_configurations(self):
+        """Edge ConfigMap must NOT contain input configurations.
+
+        Inputs are managed by the external pack (cc-edge-claude-code-otel),
+        installed at pod startup. The ConfigMap should only contain outputs.
+        """
         configmap_text = self._CONFIGMAP_PATH.read_text()
 
-        # Extract path: and filenames: value lines from the YAML text
-        violations = []
-        for line in configmap_text.splitlines():
-            stripped = line.strip()
-            # Only check lines that set path or filenames values
-            if not (stripped.startswith("path:") or stripped.startswith("filenames:")):
-                continue
-            for pattern in self.FORBIDDEN_PATTERNS:
-                if pattern in stripped:
-                    violations.append(f"Pattern '{pattern}' found in line: {stripped}")
+        # The ConfigMap should not contain any inputs.yml data key
+        assert "inputs.yml" not in configmap_text, (
+            "Edge ConfigMap should not contain inputs.yml — "
+            "inputs are managed by the external pack installed at pod startup"
+        )
 
-        assert violations == [], "Forbidden patterns found in Edge ConfigMap inputs:\n" + "\n".join(violations)
+        # Verify no input-style path/filenames directives exist
+        input_lines = [
+            line.strip()
+            for line in configmap_text.splitlines()
+            if line.strip().startswith("path:") or line.strip().startswith("filenames:")
+        ]
+        assert input_lines == [], (
+            f"Edge ConfigMap should not contain path:/filenames: directives — found: {input_lines}"
+        )
 
     @pytest.mark.parametrize("pattern", FORBIDDEN_PATTERNS)
     def test_forbidden_pattern_not_in_pack_inputs(self, pattern):
