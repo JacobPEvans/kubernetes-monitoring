@@ -8,7 +8,7 @@ engine: copilot
 
 on:
   workflow_run:
-    workflows: ["Validate"]
+    workflows: ["Validate", "Validate Merged"]
     types:
       - completed
     branches:
