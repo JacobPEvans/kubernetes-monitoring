@@ -10,7 +10,6 @@ import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from conftest import kubectl_exec_no_fail, kubectl_secret, kubectl_secret_values
 
 
@@ -43,7 +42,7 @@ class TestKubectlSecret:
                 kubectl_secret("my-secret", "any-key")
 
     def test_decodes_non_ascii_values(self):
-        raw = "pässwörд"
+        raw = "pässwörд"  # cspell:disable-line
         encoded = base64.b64encode(raw.encode()).decode()
         data = {"data": {"key": encoded}}
         with patch("conftest.kubectl_json", return_value=data):

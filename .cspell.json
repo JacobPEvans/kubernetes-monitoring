@@ -73,7 +73,8 @@
     "pkgs",
     "kubeval",
     "Rego",
-    "ENVRC"
+    "ENVRC",
+    "mypod"
   ],
   "ignorePaths": [
     "packs/",
