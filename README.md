@@ -10,6 +10,7 @@ Kubernetes monitoring stack for local OrbStack cluster. Collects, processes, and
 | Cribl Edge (Managed) | Log collection, connected to Cribl Cloud | 9420 (OTEL), 9000 (UI) |
 | Cribl Edge (Standalone) | Local log collection, independent | 9420 (OTEL), 30910 (UI NodePort) |
 | Cribl Stream (Standalone) | Local log routing and transformation | 9000 (API), 30900 (UI NodePort) |
+| Cribl MCP Server | Cribl Cloud MCP API server for Claude Code | 30030 (NodePort) |
 | AI Jobs | Ephemeral Claude Code / Gemini CLI containers | N/A |
 
 ## Quick Start
@@ -44,12 +45,12 @@ make status
                     │   OrbStack Cluster    │
                     │   (monitoring ns)     │
                     │                       │
-  ┌─────────────┐   │  ┌───────────────┐   │
-  │ Claude Code ├───┼─►│ OTEL Collector├───┼──►  Cribl Edge
-  │ (OTLP SDK)  │   │  └───────────────┘   │    (Managed)
-  └─────────────┘   │                       │        │
-                    │  ┌───────────────┐   │        ▼
-                    │  │ Cribl Edge    │   │   Cribl Cloud
+  ┌─────────────┐   │  ┌───────────────┐   │   ┌──────────────┐
+  │ Claude Code ├───┼─►│ OTEL Collector│   │   │ Cribl Edge   │
+  │ (OTLP SDK)  │   │  └───────┬───────┘   │   │ (Managed)    │
+  └─────────────┘   │          │            │   └──────┬───────┘
+                    │  ┌───────▼───────┐   │          ▼
+                    │  │ Cribl Edge    │   │     Cribl Cloud
                     │  │ (Standalone)  │   │
                     │  └───────┬───────┘   │
                     │          │            │
@@ -85,7 +86,6 @@ kubernetes-monitoring/
 │   ├── deploy-doppler.sh        # Deploy with secrets from Doppler
 │   └── generate-overlay.sh      # Overlay generator
 ├── tests/                       # Integration and smoke tests
-├── packs/                       # Cribl Edge pack files
 ├── docs/                        # Extended documentation
 └── Makefile
 ```
@@ -101,7 +101,7 @@ kubernetes-monitoring/
 | `make status` | Show pod status |
 | `make logs` | Tail all pod logs |
 | `make build-images` | Build Docker images |
-| `make test` | Run all integration tests |
+| `make test-all` | Run all tests in order (unit → smoke → pipeline → forwarding → sourcetypes) |
 | `make test-smoke` | Run smoke tests (cluster connectivity) |
 | `make test-pipeline` | Run pipeline tests (OTLP flow) |
 | `make test-forwarding` | Run forwarding tests (Cribl routing) |
