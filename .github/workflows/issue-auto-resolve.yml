@@ -78,5 +78,5 @@ jobs:
     uses: JacobPEvans/ai-workflows/.github/workflows/issue-resolver.yml@v0.8.0
     secrets: inherit
     with:
-      repo_context: "Kubernetes monitoring stack for OrbStack (OpenTelemetry, Cribl Edge, Cribl Stream)"
+      repo_context: "Kubernetes monitoring stack for OrbStack (OTEL, Cribl Edge, Cribl Stream, Helm charts)"
       issue_number: ${{ inputs.issue_number }}
