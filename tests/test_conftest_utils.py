@@ -1,16 +1,26 @@
 """Tier 0: Unit tests for conftest.py utility functions — no cluster required.
 
 These tests cover the kubectl helper utilities in conftest.py that contain
-non-trivial logic: secret decoding, multi-key lookups, and exec error handling.
+non-trivial logic: secret decoding, multi-key lookups, exec error handling,
+port-forward retry logic, and JSON output parsing.
 All subprocess/kubectl calls are mocked so no cluster is needed.
 """
 
 import base64
+import json
 import subprocess
 from unittest.mock import MagicMock, patch
 
 import pytest
-from conftest import kubectl_exec_no_fail, kubectl_secret, kubectl_secret_values
+import requests
+from conftest import (
+    kubectl,
+    kubectl_exec_no_fail,
+    kubectl_json,
+    kubectl_secret,
+    kubectl_secret_values,
+    port_forward_get,
+)
 
 
 def _encode(value: str) -> str:
@@ -124,3 +134,90 @@ class TestKubectlExecNoFail:
         assert "exec" in called_cmd
         assert "statefulset/otel-collector" in called_cmd
         assert "wget" in called_cmd
+
+
+class TestKubectl:
+    def test_returns_stripped_stdout_on_success(self):
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "NAME  READY\n"
+        mock_result.stderr = ""
+        with patch("conftest.subprocess.run", return_value=mock_result):
+            output = kubectl("get", "pods")
+        assert output == "NAME  READY"
+
+    def test_raises_runtime_error_on_nonzero_returncode(self):
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+        mock_result.stderr = "Error from server: not found"
+        with patch("conftest.subprocess.run", return_value=mock_result):
+            with pytest.raises(RuntimeError, match="failed"):
+                kubectl("get", "pods")
+
+    def test_error_message_includes_stderr(self):
+        mock_result = MagicMock()
+        mock_result.returncode = 2
+        mock_result.stdout = ""
+        mock_result.stderr = "connection refused"
+        with patch("conftest.subprocess.run", return_value=mock_result):
+            with pytest.raises(RuntimeError, match="connection refused"):
+                kubectl("cluster-info")
+
+
+class TestKubectlJson:
+    def test_parses_json_output(self):
+        payload = {"items": [{"name": "pod-1"}]}
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = json.dumps(payload) + "\n"
+        mock_result.stderr = ""
+        with patch("conftest.subprocess.run", return_value=mock_result):
+            result = kubectl_json("get", "pods")
+        assert result == payload
+
+    def test_propagates_kubectl_error(self):
+        mock_result = MagicMock()
+        mock_result.returncode = 1
+        mock_result.stdout = ""
+        mock_result.stderr = "secret not found"
+        with patch("conftest.subprocess.run", return_value=mock_result):
+            with pytest.raises(RuntimeError):
+                kubectl_json("get", "secret", "missing")
+
+
+class TestPortForwardGet:
+    def _make_proc(self, poll_return=None):
+        proc = MagicMock()
+        proc.poll.return_value = poll_return
+        return proc
+
+    def test_returns_response_on_successful_connection(self):
+        proc = self._make_proc(poll_return=None)
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        with patch("conftest.subprocess.Popen", return_value=proc):
+            with patch("conftest.requests.get", return_value=mock_resp):
+                with patch("conftest.time.time", side_effect=[0, 1]):
+                    resp = port_forward_get("otel-collector", 13133, 13133, "/")
+        assert resp is mock_resp
+        proc.terminate.assert_called_once()
+        proc.wait.assert_called_once()
+
+    def test_fails_when_process_exits_early(self):
+        proc = self._make_proc(poll_return=1)
+        with patch("conftest.subprocess.Popen", return_value=proc):
+            with patch("conftest.time.time", side_effect=[0, 1]):
+                with pytest.raises(pytest.fail.Exception, match="exited before request"):
+                    port_forward_get("otel-collector", 13133, 13133, "/")
+
+    def test_times_out_when_connection_always_refused(self):
+        proc = self._make_proc(poll_return=None)
+        with patch("conftest.subprocess.Popen", return_value=proc):
+            with patch("conftest.requests.get", side_effect=requests.exceptions.ConnectionError("refused")):
+                with patch("conftest.time.time", side_effect=[0, 0, 16]):
+                    with patch("conftest.time.sleep"):
+                        with pytest.raises(pytest.fail.Exception, match="Timed out"):
+                            port_forward_get("otel-collector", 13133, 13133, "/", timeout_seconds=15)
+        proc.terminate.assert_called_once()
+        proc.wait.assert_called_once()
