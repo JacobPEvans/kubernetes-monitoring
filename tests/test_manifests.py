@@ -22,11 +22,7 @@ _SYSTEM_PATH_PREFIXES = ("/var/", "/proc/", "/sys/", "/dev/", "/etc/", "/tmp/", 
 
 def _base_yaml_files_with_hostpath() -> list[Path]:
     """Return sorted list of base YAML files that contain a hostPath volume entry."""
-    return sorted(
-        f
-        for f in BASE_DIR.rglob("*.yaml")
-        if "kustomization" not in f.name and "hostPath" in f.read_text()
-    )
+    return sorted(f for f in BASE_DIR.rglob("*.yaml") if "kustomization" not in f.name and "hostPath" in f.read_text())
 
 
 class TestArchitectureInvariant:
@@ -74,9 +70,7 @@ class TestArchitectureInvariant:
     def test_stream_egress_policy_uses_splunk_hec_port(self):
         """Stream egress must specify port 8088 for Splunk HEC forwarding."""
         policy_text = (NETWORK_POLICIES_DIR / "allow-stream-egress.yaml").read_text()
-        assert "8088" in policy_text, (
-            "Stream egress policy must specify port 8088 for Splunk HEC forwarding"
-        )
+        assert "8088" in policy_text, "Stream egress policy must specify port 8088 for Splunk HEC forwarding"
 
     def test_default_deny_covers_both_ingress_and_egress(self):
         """Default deny policy must block both ingress and egress in the monitoring namespace."""
