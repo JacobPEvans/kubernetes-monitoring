@@ -14,10 +14,22 @@ Tests are organized into five tiers, each building on the previous:
 
 Run all tiers: `make test-all` (or individually with the commands above).
 
+## Enforcement
+
+All tiers are enforced in CI and block PR merges on failure:
+
+| Tier | CI Workflow | Runner |
+|------|-------------|--------|
+| 0 — Unit + manifest tests | `validate.yml` (`unit-tests` job) | ubuntu-latest |
+| 1–4 — Smoke, Pipeline, Forwarding, Sourcetypes | `e2e-tests.yml` | self-hosted macOS |
+
+Manual `make test-*` commands are available for local development and debugging.
+
 ## Prerequisites
 
-- OrbStack running with the monitoring namespace deployed: `make deploy-doppler`
 - Test venv installed: `make test-setup`
+- For Tiers 1–4 (local only): OrbStack running with monitoring namespace deployed: `make deploy-doppler`
+- Splunk HEC token configured: `SPLUNK_HEC_TOKEN` must be set in Doppler `iac-conf-mgmt/prd`
 - Splunk HEC token configured: `SPLUNK_HEC_TOKEN` must be set in Doppler `iac-conf-mgmt/prd`
 - Splunk management credentials in secret: `splunk-hec-config` must have `mgmt-url` and `admin-password` keys (populated automatically by `make deploy-doppler` when `SPLUNK_PASSWORD` is set)
 

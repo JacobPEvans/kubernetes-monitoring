@@ -66,9 +66,9 @@ jobs:
         with:
           python-version: '3.14'
       - name: Install test dependencies
-        run: pip install -r tests/requirements.txt
+        run: make test-setup
       - name: Run unit tests
-        run: pytest tests/test_unit.py -v
+        run: make test-unit
 
   scan-dockerfiles:
     name: Scan Dockerfiles for vulnerabilities

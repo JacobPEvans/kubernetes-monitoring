@@ -60,7 +60,7 @@ test-sourcetypes: ## Run per-sourcetype E2E tests
 
 test-unit: ## Run unit tests (no cluster required)
 	@$(PYTEST_CHECK)
-	.venv/bin/pytest tests/test_unit.py -v
+	.venv/bin/pytest tests/test_unit.py tests/test_manifests.py tests/test_conftest_utils.py -v
 
 test-e2e: ## Run full test suite in order (smoke → pipeline → forwarding → sourcetypes)
 	@$(PYTEST_CHECK)

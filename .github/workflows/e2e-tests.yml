@@ -1,0 +1,25 @@
+name: E2E Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'k8s/**'
+      - 'scripts/**'
+      - 'Makefile'
+      - 'tests/**'
+
+jobs:
+  e2e:
+    name: Deploy and run E2E tests
+    runs-on: [self-hosted, macOS]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Deploy to OrbStack
+        run: make deploy-doppler
+      - name: Wait for rollout
+        run: sleep 10
+      - name: Install test dependencies
+        run: make test-setup
+      - name: Run E2E test suite
+        run: make test-e2e

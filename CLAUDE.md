@@ -19,19 +19,18 @@ Kubernetes monitoring manifests for local OrbStack cluster.
 - **Image tags**: Use `latest` for upstream images (Cribl, OTEL, etc.). Do NOT pin specific versions — Renovate and upstream release tracking handle updates.
 - **Worktrees**: Use `/init-worktree` before starting work. Work in feature branches.
 
-## Deployment Verification (MANDATORY)
+## Deployment Verification
 
-**Every change to k8s manifests MUST be verified by actually deploying to the cluster.** `make validate` alone is NOT sufficient.
+CI enforces deployment verification via the `e2e-tests.yml` workflow on a self-hosted runner.
+Every PR touching `k8s/**`, `scripts/**`, `Makefile`, or `tests/**` automatically triggers
+a full deploy + E2E test run that blocks merge on failure.
 
-After modifying any manifest, ConfigMap, or deployment script:
+**Manual verification** (for local troubleshooting only):
 
 1. `make deploy-doppler` (or `kubectl apply -k k8s/overlays/local/` if SOPS key unavailable)
 2. Wait for rollouts: `kubectl --context orbstack -n monitoring rollout status statefulset/<name>`
 3. Verify pods are Running and Ready: `make status`
 4. Check logs for errors: `kubectl --context orbstack -n monitoring logs statefulset/<name> --tail=20`
-5. If health probes fail, check startup logs for the specific pod (not just `deploy/`)
-
-Do NOT commit, push, or create PRs until all pods are Running and Ready.
 
 ## Architecture
 
@@ -75,22 +74,22 @@ nix develop     # manual activation
 
 GitHub Actions run on every push and PR:
 
-- **validate.yml** — Kustomize build + kubeconform schema validation + pre-commit hooks
-- **validate-merged.yml** — Post-merge validation of current + last 2 commits on main
+- **validate.yml** (ubuntu-latest, blocking) — kustomize + kubeconform + yamllint + pre-commit + unit/manifest tests + Dockerfile scan
+- **e2e-tests.yml** (self-hosted macOS, blocking) — deploy + full E2E test suite (smoke → pipeline → forwarding → sourcetypes)
+- **validate-merged.yml** (ubuntu-latest) — post-merge schema validation of last 3 commits
 
 ## Testing
 
 See [Testing Guide](docs/TESTING.md) for full documentation on test tiers, prerequisites, and troubleshooting.
 
+All tiers are enforced in CI. For local debugging:
+
 ```bash
-make validate          # Validate kustomize builds + schemas
-make validate-schemas  # Schema validation only
-make deploy            # Full deploy to OrbStack
-make status            # Check pod status
-make test-smoke        # Run smoke tests (cluster connectivity)
-make test-pipeline     # Run pipeline tests (OTLP flow)
-make test-forwarding   # Run forwarding tests (Cribl routing)
-make test-sourcetypes  # Run per-sourcetype E2E tests
-make test-unit         # Run unit tests (no cluster required)
-make test-all          # Run all tests in order
+make test-unit         # Unit + manifest tests (no cluster required)
+make test-smoke        # Smoke tests (pod health)
+make test-pipeline     # Pipeline tests (OTLP flow)
+make test-forwarding   # Forwarding tests (Cribl routing)
+make test-sourcetypes  # Per-sourcetype E2E tests
+make test-e2e          # Full E2E suite (smoke → pipeline → forwarding → sourcetypes)
+make test-all          # All tests in order: unit → e2e
 ```
