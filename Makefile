@@ -3,6 +3,7 @@
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
 PYTEST_CHECK := test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
+UNIT_TEST_FILES := tests/test_unit.py tests/test_manifests.py tests/test_conftest_utils.py
 
 help: ## Show all targets
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
@@ -60,7 +61,7 @@ test-sourcetypes: ## Run per-sourcetype E2E tests
 
 test-unit: ## Run unit tests (no cluster required)
 	@$(PYTEST_CHECK)
-	.venv/bin/pytest tests/test_unit.py -v
+	.venv/bin/pytest $(UNIT_TEST_FILES) -v
 
 test-e2e: ## Run full test suite in order (smoke → pipeline → forwarding → sourcetypes)
 	@$(PYTEST_CHECK)
@@ -68,7 +69,7 @@ test-e2e: ## Run full test suite in order (smoke → pipeline → forwarding →
 
 test-all: ## Run all tests in order: unit → smoke → pipeline → forwarding → sourcetypes
 	@$(PYTEST_CHECK)
-	.venv/bin/pytest tests/test_unit.py tests/test_smoke.py tests/test_pipeline.py tests/test_forwarding.py tests/test_sourcetypes.py -v --tb=short
+	.venv/bin/pytest $(UNIT_TEST_FILES) tests/test_smoke.py tests/test_pipeline.py tests/test_forwarding.py tests/test_sourcetypes.py -v --tb=short
 
 test-setup: ## Install test dependencies in virtual environment
 	python3 -m venv .venv

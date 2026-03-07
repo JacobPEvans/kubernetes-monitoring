@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml
 
 BASE_DIR = Path(__file__).parent.parent / "k8s" / "base"
 NETWORK_POLICIES_DIR = BASE_DIR / "network-policies"
@@ -61,15 +62,19 @@ class TestArchitectureInvariant:
         )
 
     def test_stream_egress_policy_allows_external_splunk(self):
-        """Stream egress must reach external Splunk — egress rules must not restrict by podSelector."""
+        """Stream egress must reach external Splunk — egress 'to:' entries must not restrict by podSelector."""
         policy_text = (NETWORK_POLICIES_DIR / "allow-stream-egress.yaml").read_text()
-        # spec.podSelector selects which pods the policy applies to — that's fine.
-        # A podSelector inside the egress rules would restrict traffic to internal pods only,
-        # blocking external Splunk access. Check only the egress rules section.
-        egress_section = policy_text.split("egress:", 1)[-1] if "egress:" in policy_text else ""
-        assert "podSelector" not in egress_section, (
-            "Stream egress rules must not use podSelector — egress must reach external Splunk hosts"
-        )
+        policy = yaml.safe_load(policy_text)
+        # spec.podSelector identifies which pods this policy applies to — always expected.
+        # An egress 'to:' entry with podSelector would restrict egress to in-cluster pods only,
+        # preventing access to an external Splunk host. No 'to:' restriction means all
+        # destinations are allowed, which is correct for external Splunk egress.
+        for rule in policy.get("spec", {}).get("egress", []):
+            for to_entry in rule.get("to", []):
+                assert "podSelector" not in to_entry, (
+                    "Stream egress policy must not use podSelector in 'to:' entries — "
+                    "Splunk is an external host, not an in-cluster pod"
+                )
 
     def test_stream_egress_policy_uses_splunk_hec_port(self):
         """Stream egress must specify port 8088 for Splunk HEC forwarding."""
