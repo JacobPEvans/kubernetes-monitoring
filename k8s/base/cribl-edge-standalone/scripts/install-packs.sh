@@ -30,7 +30,7 @@ if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-claude-c
 fi
 
 # Cribl auto-disables gemini-cli-otel (port 4317 conflict with claude-code-otel).
-if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-gemini" >/dev/null 2>&1; then
+if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-gemini-antigravity" >/dev/null 2>&1; then
   curl -sf -X POST "${API}/packs" -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
     -d "{\"name\":\"cc-edge-gemini\",\"source\":\"${PACK_GEMINI}\"}" \

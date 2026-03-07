@@ -643,14 +643,21 @@ class TestGeminiSourcetypeSentinels:
 
         sentinel_id = f"GEMINI_E2E_{uuid.uuid4().hex[:12]}"
 
-        result = subprocess.run(
-            [gemini_bin, "-p", f"kubernetes-monitoring test sentinel {sentinel_id}"],
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        if result.returncode != 0:
-            pytest.skip(f"gemini CLI exited {result.returncode}: {result.stderr[:200]}")
+        # gemini -p launches an agentic session that can run for several minutes.
+        # We only need it to start and write session files to ~/.gemini/tmp/; we
+        # don't need it to finish. Catch TimeoutExpired and continue so Splunk
+        # polling can still verify the session data made it through the pipeline.
+        try:
+            result = subprocess.run(
+                [gemini_bin, "-p", f"kubernetes-monitoring test sentinel {sentinel_id}"],
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            if result.returncode != 0:
+                pytest.skip(f"gemini CLI exited {result.returncode}: {result.stderr[:200]}")
+        except subprocess.TimeoutExpired:
+            pass  # session files already written; proceed to poll Splunk
 
         mgmt_url, admin_password = splunk_client
         results = _wait_for_splunk(
