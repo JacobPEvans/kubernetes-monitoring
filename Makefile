@@ -102,16 +102,18 @@ runner-build: ## Build the self-hosted runner Docker image
 
 runner-start: ## Start the self-hosted GitHub Actions runner
 	@scripts/runner-kubeconfig.sh > ~/.config/actions-runner-kubeconfig
-	@TOKEN=$$(gh api repos/JacobPEvans/kubernetes-monitoring/actions/runners/registration-token --method POST --jq '.token') && \
+	@RUNNER_TOKEN=$$(gh api repos/JacobPEvans/kubernetes-monitoring/actions/runners/registration-token --method POST --jq '.token') && \
+	DOPPLER_TOKEN=$$(sops exec-env secrets.enc.yaml 'printf "%s" "$$DOPPLER_TOKEN"') && \
 	docker run -d \
 	  --name actions-runner \
 	  --restart=always \
 	  -e GITHUB_REPOSITORY=JacobPEvans/kubernetes-monitoring \
-	  -e RUNNER_TOKEN="$$TOKEN" \
+	  -e RUNNER_TOKEN="$$RUNNER_TOKEN" \
 	  -e RUNNER_NAME=orbstack-runner \
 	  -e RUNNER_LABELS="self-hosted,Linux" \
 	  -e SOPS_AGE_KEY_FILE=/home/runner/.config/sops/age/keys.txt \
 	  -e KUBECONFIG=/home/runner/.kube/config \
+	  -e DOPPLER_TOKEN="$$DOPPLER_TOKEN" \
 	  -v $(HOME)/.config/actions-runner-kubeconfig:/home/runner/.kube/config:ro \
 	  -v $(HOME)/.config/sops/age/keys.txt:/home/runner/.config/sops/age/keys.txt:ro \
 	  kubernetes-monitoring/actions-runner:latest
