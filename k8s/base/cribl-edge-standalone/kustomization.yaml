@@ -3,7 +3,15 @@ kind: Kustomization
 
 resources:
   - statefulset.yaml
-  - configmap-cribl-config.yaml
   - service.yaml
   - service-ui.yaml
   - pdb.yaml
+
+configMapGenerator:
+  - name: cribl-edge-standalone-config
+    namespace: monitoring
+    options:
+      disableNameSuffixHash: true
+    files:
+      - install-packs.sh=scripts/install-packs.sh
+      - outputs.yml=outputs.yml
