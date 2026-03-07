@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   ci-suite:
-    uses: JacobPEvans/ai-workflows/.github/workflows/suite-ci.yml@v0.9.1
+    uses: JacobPEvans/ai-workflows/.github/workflows/suite-ci.yml@v0.9.3
     with:
       repo_context: "Kubernetes monitoring stack for OrbStack (OTEL, Cribl Edge, Cribl Stream, Helm charts)"
       ci_structure: "validate.yml (Kubernetes manifest validation and linting)"

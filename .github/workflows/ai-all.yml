@@ -49,7 +49,7 @@ jobs:
       id-token: write
       issues: write
       pull-requests: write
-    uses: JacobPEvans/ai-workflows/.github/workflows/suite-all.yml@v0.9.1
+    uses: JacobPEvans/ai-workflows/.github/workflows/suite-all.yml@v0.9.3
     with:
       caller_event: ${{ github.event_name }}
       review_prompt: "Focus on Kubernetes monitoring patterns, OTEL collector configuration, Cribl Edge pipelines, and Helm chart best practices"
