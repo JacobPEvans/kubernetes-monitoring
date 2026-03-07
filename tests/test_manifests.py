@@ -32,7 +32,7 @@ class TestArchitectureInvariant:
 
     def test_edge_standalone_output_targets_stream_not_splunk(self):
         """Edge standalone ConfigMap outputs.yml must route to cribl-stream-standalone, not Splunk directly."""
-        configmap = EDGE_STANDALONE_DIR / "configmap-cribl-config.yaml"
+        configmap = EDGE_STANDALONE_DIR / "outputs.yml"
         text = configmap.read_text()
 
         assert "cribl-stream-standalone" in text, (

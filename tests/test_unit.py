@@ -184,8 +184,8 @@ class TestSecurityExclusions:
         "cache/",
     ]
 
-    # Absolute path to the Edge standalone ConfigMap
-    _CONFIGMAP_PATH = Path(__file__).parent.parent / "k8s/base/cribl-edge-standalone/configmap-cribl-config.yaml"
+    # Absolute path to the Edge standalone outputs config (ConfigMap now uses configMapGenerator with this file)
+    _CONFIGMAP_PATH = Path(__file__).parent.parent / "k8s/base/cribl-edge-standalone/outputs.yml"
 
     # Path to the pack inputs file in the sibling repo (adapts to any user's home directory)
     _PACK_INPUTS_PATH = Path.home() / "git/cc-edge-claude-code-otel/default/inputs.yml"
