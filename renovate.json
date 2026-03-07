@@ -8,18 +8,9 @@
     {
       "description": "Group all dependency updates into a single PR",
       "matchPackagePatterns": [".*"],
+      "excludePackagePatterns": ["^aquasecurity/"],
       "groupName": "all dependencies",
       "groupSlug": "all-dependencies"
-    },
-    {
-      "description": "Automerge minor/patch from aquasecurity",
-      "matchManagers": ["github-actions"],
-      "matchPackagePrefixes": ["aquasecurity/"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "groupName": "aquasecurity actions",
-      "groupSlug": "aquasecurity-actions",
-      "automerge": true,
-      "automergeType": "pr"
     }
   ]
 }
