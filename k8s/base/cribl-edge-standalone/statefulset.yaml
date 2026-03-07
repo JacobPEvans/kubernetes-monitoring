@@ -74,6 +74,10 @@ spec:
                 PACK_URL="https://github.com/JacobPEvans/cc-edge-gemini-antigravity-io/releases/download/v0.1.0/cc-edge-gemini-antigravity-io.crbl"
                 PACK_FILE="/tmp/cc-edge-gemini-antigravity-io.crbl"
                 EDGE_DIR="${CRIBL_VOLUME_DIR}/local/edge"
+                if [ ! -s "${EDGE_DIR}/inputs.yml" ]; then
+                  echo "WARNING: base inputs.yml missing or empty (CMD_2 may have failed); skipping Gemini pack merge"
+                  exit 0
+                fi
                 curl -sfL "${PACK_URL}" -o "${PACK_FILE}" || { echo "WARNING: Gemini pack download failed"; exit 0; }
                 tar --no-same-owner -xzf "${PACK_FILE}" -C /tmp default/inputs.yml
                 echo "" >> "${EDGE_DIR}/inputs.yml"
