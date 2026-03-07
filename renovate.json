@@ -8,6 +8,7 @@
     {
       "description": "Group all dependency updates into a single PR",
       "matchPackagePatterns": [".*"],
+      "excludePackagePatterns": ["^aquasecurity/"],
       "groupName": "all dependencies",
       "groupSlug": "all-dependencies"
     }
