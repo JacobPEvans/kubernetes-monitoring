@@ -26,14 +26,11 @@ PACK_GEMINI="https://github.com/JacobPEvans/cc-edge-gemini-antigravity-io/releas
 # to complete before installing the next pack, otherwise the second install
 # happens during the first reload and the worker never loads the second pack
 # until the next file-change-triggered reload (which can be minutes later).
-CHANGED=false
-
 if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-claude-code" >/dev/null 2>&1; then
   curl -sf -X POST "${API}/packs" -H "Authorization: Bearer ${TOKEN}" \
     -H "Content-Type: application/json" \
     -d "{\"name\":\"cc-edge-claude-code\",\"source\":\"${PACK_CLAUDE}\"}" \
     || echo "WARNING: Claude pack install failed"
-  CHANGED=true
   # Wait for Cribl worker to finish reloading after Claude pack install.
   sleep 10
 fi
@@ -44,7 +41,6 @@ if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-gemini-a
     -H "Content-Type: application/json" \
     -d "{\"name\":\"cc-edge-gemini\",\"source\":\"${PACK_GEMINI}\"}" \
     || echo "WARNING: Gemini pack install failed"
-  CHANGED=true
 fi
 
 # Edge 4.16.x bug: FileMonitor ignores filename patterns not starting with '*'.
@@ -61,18 +57,26 @@ sed -i \
   -e 's/- installed_plugins\.json$/- "*.json"/' \
   "${PACK_DIR}/inputs.yml" 2>/dev/null || true
 
+# Edge 4.16.x bug: $GEMINI_HOME env var doesn't resolve during early worker
+# startup after pod restart, causing FileMonitor to scan /.gemini (non-existent)
+# instead of /home/gemini/.gemini. Replace the variable reference with the
+# literal path so FileMonitor works immediately on cold start.
+GEMINI_PACK_DIR="${CRIBL_VOLUME_DIR}/default/cc-edge-gemini-antigravity"
+sed -i \
+  -e "s|\\\$GEMINI_HOME|${GEMINI_HOME}|g" \
+  "${GEMINI_PACK_DIR}/inputs.yml" 2>/dev/null || true
+
 # Force Cribl to commit all pending config changes and reload the worker.
-# Without this, packs installed via REST API may not be loaded by the worker
-# until the next file-change-triggered reload (which can be minutes later).
+# This runs unconditionally because sed patches above always modify pack inputs
+# (even when packs are already installed), and the worker needs to reload to
+# pick up the resolved env var paths and filename pattern fixes.
 # Note: "effective" param requires a group and fails on Edge standalone,
 # so we use version/commit (without effective) + system/settings/reload.
-if [ "$CHANGED" = "true" ]; then
-  curl -sf -X POST "${API}/version/commit" -H "Authorization: Bearer ${TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d '{"message":"Pack installation and FileMonitor patches"}' \
-    || true
-  curl -sf -X POST "${API}/system/settings/reload" \
-    -H "Authorization: Bearer ${TOKEN}" || true
-fi
+curl -sf -X POST "${API}/version/commit" -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Pack installation and FileMonitor patches"}' \
+  || true
+curl -sf -X POST "${API}/system/settings/reload" \
+  -H "Authorization: Bearer ${TOKEN}" || true
 
 echo "Pack installation complete"
