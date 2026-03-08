@@ -2,6 +2,7 @@
 
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
+GITHUB_REPO ?= JacobPEvans/kubernetes-monitoring
 PYTEST_CHECK := test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
 UNIT_TEST_FILES := tests/test_unit.py tests/test_manifests.py tests/test_conftest_utils.py
 
@@ -100,10 +101,10 @@ clean: ## Delete monitoring namespace (destructive!)
 runner-build: ## Build the self-hosted runner Docker image
 	docker build -t kubernetes-monitoring/actions-runner:latest docker/actions-runner/
 
-runner-start: ## Start the self-hosted GitHub Actions runner
+runner-start: runner-stop ## Start the self-hosted GitHub Actions runner
 	@scripts/runner-kubeconfig.sh > ~/.config/actions-runner-kubeconfig
 	@chmod 600 ~/.config/actions-runner-kubeconfig
-	@RUNNER_TOKEN=$$(gh api repos/JacobPEvans/kubernetes-monitoring/actions/runners/registration-token --method POST --jq '.token') && \
+	@RUNNER_TOKEN=$$(gh api repos/$(GITHUB_REPO)/actions/runners/registration-token --method POST --jq '.token') && \
 	SOPS_ENV=$$(sops exec-env secrets.enc.yaml 'env | grep -E "^(DOPPLER_PROJECT|DOPPLER_CONFIG|DOPPLER_TOKEN|CRIBL_STREAM_PASSWORD|HEALTHCHECKS_)"') && \
 	ENV_FILE=$$(mktemp) && \
 	printf '%s\n' "$$SOPS_ENV" > "$$ENV_FILE" && \
@@ -111,7 +112,7 @@ runner-start: ## Start the self-hosted GitHub Actions runner
 	docker run -d \
 	  --name actions-runner \
 	  --restart=always \
-	  -e GITHUB_REPOSITORY=JacobPEvans/kubernetes-monitoring \
+	  -e GITHUB_REPOSITORY=$(GITHUB_REPO) \
 	  -e RUNNER_TOKEN="$$RUNNER_TOKEN" \
 	  -e RUNNER_NAME=orbstack-runner \
 	  -e RUNNER_LABELS="self-hosted,Linux" \
@@ -134,7 +135,7 @@ runner-stop: ## Stop and remove the self-hosted runner
 
 runner-status: ## Show runner container and GitHub registration status
 	@docker ps --filter name=actions-runner --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || true
-	@gh api repos/JacobPEvans/kubernetes-monitoring/actions/runners --jq '.runners[] | {name, status, labels: [.labels[].name]}' 2>/dev/null || true
+	@gh api repos/$(GITHUB_REPO)/actions/runners --jq '.runners[] | {name, status, labels: [.labels[].name]}' 2>/dev/null || true
 
 runner-logs: ## Tail runner container logs
 	docker logs -f actions-runner
