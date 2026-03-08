@@ -155,8 +155,9 @@ declare -A timeouts=(
   # 420s: startupProbe max (10s + 30×10s = 310s) + postStart setup-edge.sh (MAX_RETRIES=150, 2s sleep = 300s max)
   # The postStart hook runs concurrently with the startupProbe; 420s gives ample margin for cold starts.
   [cribl-edge-standalone]=420s
-  # 600s accounts for PVC provisioning + startupProbe (60 failures × 10s = 600s max) + cold-start copy
-  [cribl-stream-standalone]=600s
+  # 900s accounts for PVC provisioning + startupProbe (60 failures × 10s + 10s timeout = 610s max) + cold-start copy
+  # The 10s timeoutSeconds means failed probes consume 10s each, so 600s is cutting it too close.
+  [cribl-stream-standalone]=900s
   [cribl-mcp-server]=120s
 )
 
