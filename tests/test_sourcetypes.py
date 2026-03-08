@@ -12,10 +12,10 @@ Five test classes:
   TestSourcetypeExistence       — Query Splunk for any existing data with the expected
                                   sourcetype (history, stats, plugins — live files we
                                   cannot safely write test data to).
-  TestInputConfigurations       — Verify the Edge pod has the expected FileMonitor inputs
+  TestInputConfigurations       — Verify the Claude pack has the expected FileMonitor inputs
                                   active and that each expected datatype is configured.
   TestGeminiSourcetypeExistence — Query Splunk for gemini:cli:* and antigravity:* data.
-  TestGeminiInputConfigurations — Verify the Edge pod has the expected Gemini datatypes.
+  TestGeminiInputConfigurations — Verify the Gemini pack has the expected datatypes.
 """
 
 import errno
@@ -528,10 +528,15 @@ class TestInputConfigurations:
 
     These tests inspect the running Edge pod to confirm that:
       1. The FileMonitor collector is actively finding files (log evidence).
-      2. Each expected datatype appears in the loaded Edge pack configuration.
+      2. Each expected datatype appears in the Claude Code pack configuration.
 
+    The Claude pack is installed via REST API (install-packs.sh) and stores its
+    inputs in the pack directory (default/cc-edge-claude-code/inputs.yml).
     They do not require Splunk connectivity and run against the live cluster only.
     """
+
+    # Shell command to read the Claude pack's inputs.yml inside the Edge pod.
+    _CLAUDE_PACK_INPUTS_CMD = "cat ${CRIBL_VOLUME_DIR:-/opt/cribl/data}/default/cc-edge-claude-code/inputs.yml"
 
     def test_file_monitor_inputs_active(self):
         """Edge pod logs should contain 'FileMonitor collector added' entries.
@@ -549,30 +554,29 @@ class TestInputConfigurations:
         )
 
     def test_edge_inputs_yml_contains_claude_paths(self):
-        """Edge inputs.yml should reference at least one ~/.claude/ monitoring path.
+        """Claude pack inputs.yml should reference at least one ~/.claude/ monitoring path.
 
-        Reads the injected inputs.yml from the edge pod's config directory and verifies
-        that the Claude Code home directory path is present, confirming the pack's
-        FileMonitor inputs were correctly written at startup.
+        Reads the pack's inputs.yml from the edge pod and verifies that the Claude
+        Code home directory path is present, confirming the REST API pack install succeeded.
         """
         output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "sh",
             "-c",
-            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/inputs.yml",
+            self._CLAUDE_PACK_INPUTS_CMD,
         )
         assert returncode == 0, (
-            f"Could not read edge inputs.yml (exit {returncode}). "
-            "Check that CRIBL_BEFORE_START_CMD wrote inputs.yml to local/edge/."
+            f"Could not read Claude pack inputs.yml (exit {returncode}). "
+            "Check that install-packs.sh installed the cc-edge-claude-code pack."
         )
         assert "/home/claude/.claude/" in output or "$CLAUDE_HOME/.claude/" in output, (
-            f"Expected '/home/claude/.claude/' or '$CLAUDE_HOME/.claude/' path in edge inputs.yml, got:\n{output[:500]}"
+            f"Expected '$CLAUDE_HOME/.claude/' path in pack inputs.yml, got:\n{output[:500]}"
         )
 
     @pytest.mark.parametrize("datatype", EXPECTED_DATATYPES)
     def test_edge_input_datatype_configured(self, datatype: str):
-        """Each expected datatype should appear in the Edge's loaded pack configuration.
+        """Each expected datatype should appear in the Claude pack's inputs.yml.
 
         Reads the pack inputs configuration from within the edge pod and verifies that
         the datatype ID is present. A missing datatype means the pack was not installed
@@ -581,21 +585,18 @@ class TestInputConfigurations:
         Args:
             datatype: The Cribl datatype ID to search for, e.g. 'claude-code-session'.
         """
-        # The pack config is written to the pack's local inputs directory.
-        # We search in inputs.yml because that is where CRIBL_BEFORE_START_CMD
-        # writes the merged configuration for the edge runtime to load.
         output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "sh",
             "-c",
-            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/inputs.yml",
+            self._CLAUDE_PACK_INPUTS_CMD,
         )
         if returncode != 0:
-            pytest.skip(f"Could not read edge inputs.yml (exit {returncode}); skipping datatype presence check.")
+            pytest.skip(f"Could not read Claude pack inputs.yml (exit {returncode}); skipping datatype check.")
         assert datatype in output, (
-            f"Datatype '{datatype}' not found in edge inputs.yml. "
-            "The pack may be missing this input or the datatype ID may have changed. "
+            f"Datatype '{datatype}' not found in pack inputs.yml. "
+            "The cc-edge-claude-code pack may be outdated or install failed. "
             f"inputs.yml excerpt (first 500 chars):\n{output[:500]}"
         )
 
@@ -757,38 +758,42 @@ class TestGeminiSourcetypeExistence:
 class TestGeminiInputConfigurations:
     """Verify the Edge pod has the expected Gemini FileMonitor inputs active and configured.
 
-    Inspects the merged inputs.yml in the running Edge pod to confirm that CMD_3
-    (Gemini pack merge) ran successfully and that all Gemini datatypes are present.
+    The Gemini pack is installed via REST API (install-packs.sh) and stores its
+    inputs in the pack directory (default/cc-edge-gemini-antigravity/inputs.yml),
+    NOT in the edge-level local/edge/inputs.yml used by the Claude pack.
     """
 
-    def test_edge_inputs_yml_contains_gemini_paths(self):
-        """Edge inputs.yml should reference ~/.gemini monitoring paths.
+    # Shell command to read the Gemini pack's inputs.yml inside the Edge pod.
+    _GEMINI_PACK_INPUTS_CMD = "cat ${CRIBL_VOLUME_DIR:-/opt/cribl/data}/default/cc-edge-gemini-antigravity/inputs.yml"
 
-        Reads the merged inputs.yml from the edge pod and verifies that the Gemini
-        home directory path is present, confirming CMD_3 (Gemini pack merge) ran.
+    def test_edge_inputs_yml_contains_gemini_paths(self):
+        """Gemini pack inputs.yml should reference ~/.gemini monitoring paths.
+
+        Reads the pack's inputs.yml from the edge pod and verifies that the Gemini
+        home directory path is present, confirming the REST API pack install succeeded.
         """
         output, returncode = kubectl_exec_no_fail(
             "statefulset/cribl-edge-standalone",
             "--",
             "sh",
             "-c",
-            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/inputs.yml",
+            self._GEMINI_PACK_INPUTS_CMD,
         )
         assert returncode == 0, (
-            f"Could not read edge inputs.yml (exit {returncode}). "
-            "Check that CRIBL_BEFORE_START_CMD_3 merged the Gemini pack inputs."
+            f"Could not read Gemini pack inputs.yml (exit {returncode}). "
+            "Check that install-packs.sh installed the cc-edge-gemini-antigravity pack."
         )
         assert "/home/gemini/.gemini" in output or "$GEMINI_HOME/.gemini" in output, (
-            f"Expected Gemini home path in edge inputs.yml, got:\n{output[:500]}\n"
-            "CRIBL_BEFORE_START_CMD_3 may have failed — check pod startup logs."
+            f"Expected Gemini home path in pack inputs.yml, got:\n{output[:500]}\n"
+            "The Gemini pack may not have been installed correctly — check pod startup logs."
         )
 
     @pytest.mark.parametrize("datatype", EXPECTED_GEMINI_DATATYPES)
     def test_edge_gemini_datatype_configured(self, datatype: str):
-        """Each expected Gemini datatype should appear in the Edge's merged inputs.yml.
+        """Each expected Gemini datatype should appear in the Gemini pack's inputs.yml.
 
-        Confirms CMD_3 merged the Gemini pack inputs into the Claude pack inputs.yml
-        successfully. A missing datatype indicates the merge step failed.
+        Confirms the REST API pack install wrote all expected inputs. A missing
+        datatype indicates the pack version is outdated or the install failed.
 
         Args:
             datatype: The Cribl datatype ID to search for, e.g. 'gemini-cli-sessions'.
@@ -798,12 +803,12 @@ class TestGeminiInputConfigurations:
             "--",
             "sh",
             "-c",
-            "cat ${CRIBL_VOLUME_DIR:-/opt/cribl}/local/edge/inputs.yml",
+            self._GEMINI_PACK_INPUTS_CMD,
         )
         if returncode != 0:
-            pytest.skip(f"Could not read edge inputs.yml (exit {returncode}); skipping Gemini datatype check.")
+            pytest.skip(f"Could not read Gemini pack inputs.yml (exit {returncode}); skipping datatype check.")
         assert datatype in output, (
-            f"Gemini datatype '{datatype}' not found in edge inputs.yml. "
-            "CRIBL_BEFORE_START_CMD_3 (Gemini pack merge) may have failed. "
+            f"Gemini datatype '{datatype}' not found in pack inputs.yml. "
+            "The cc-edge-gemini-antigravity pack may be outdated or install failed. "
             f"inputs.yml excerpt (first 500 chars):\n{output[:500]}"
         )

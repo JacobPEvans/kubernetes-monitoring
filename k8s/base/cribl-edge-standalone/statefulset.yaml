@@ -54,6 +54,7 @@ spec:
               value: >-
                 find ${CRIBL_VOLUME_DIR}/data -depth -delete 2>/dev/null;
                 mkdir -p ${CRIBL_VOLUME_DIR}/local/edge &&
+                rm -f ${CRIBL_VOLUME_DIR}/local/edge/inputs.yml &&
                 cp /var/tmp/cribl-config/outputs.yml
                 ${CRIBL_VOLUME_DIR}/local/edge/outputs.yml
             - name: CRIBL_BEFORE_START_CMD_2
