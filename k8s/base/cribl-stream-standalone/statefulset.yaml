@@ -115,6 +115,7 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 60
+            timeoutSeconds: 10
           livenessProbe:
             exec:
               command:
@@ -124,6 +125,7 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 30
             failureThreshold: 3
+            timeoutSeconds: 10
           readinessProbe:
             exec:
               command:
@@ -133,6 +135,7 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 5
+            timeoutSeconds: 10
       volumes:
         - name: cribl-state
           emptyDir: {}

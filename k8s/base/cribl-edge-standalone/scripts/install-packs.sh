@@ -38,8 +38,8 @@ if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-gemini-a
 fi
 
 # Edge 4.16.x bug: FileMonitor ignores patterns not starting with '*'.
-# Patch session-*.json (star in middle) to *.json after pack writes the file.
-EDGE_DIR="${CRIBL_VOLUME_DIR}/local/edge"
-sed -i 's/"session-\*\.json"/"*.json"/' "${EDGE_DIR}/inputs.yml" 2>/dev/null || true
+# Patch session-*.json (star in middle) to *.json in the installed pack's inputs.
+PACK_DIR="${CRIBL_VOLUME_DIR}/default/cc-edge-claude-code"
+sed -i 's/"session-\*\.json"/"*.json"/' "${PACK_DIR}/inputs.yml" 2>/dev/null || true
 
 echo "Pack installation complete"
