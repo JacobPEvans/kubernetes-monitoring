@@ -87,6 +87,8 @@ spec:
               value: "cp /var/tmp/cribl-config/pipelines-route.yml ${CRIBL_VOLUME_DIR}/local/cribl/pipelines/route.yml"
             - name: CRIBL_BEFORE_START_CMD_5
               value: "cp /var/tmp/cribl-config/pipelines-force-splunk-meta.yml ${CRIBL_VOLUME_DIR}/local/cribl/pipelines/force-splunk-meta/conf.yml"
+            - name: CRIBL_BEFORE_START_CMD_6
+              value: "cp /var/tmp/cribl-config/limits.yml ${CRIBL_VOLUME_DIR}/local/cribl/limits.yml"
           volumeMounts:
             - name: cribl-data
               mountPath: /opt/cribl/data

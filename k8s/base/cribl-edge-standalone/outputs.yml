@@ -11,7 +11,7 @@ outputs:
     maxPayloadSizeKB: 4096
     onBackpressure: block
     pqEnabled: true
-    pqMaxSize: "5GB"
+    pqMaxSize: "2GB"
     pqPath: /opt/cribl/data/pq
   default:
     type: default

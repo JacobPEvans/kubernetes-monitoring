@@ -18,7 +18,7 @@ data:
         maxPayloadSizeKB: 4096
         onBackpressure: block
         pqEnabled: true
-        pqMaxSize: "20GB"
+        pqMaxSize: "5GB"
         pqPath: /opt/cribl/data/pq
       default:
         type: default
@@ -76,3 +76,5 @@ data:
         pipeline: force-splunk-meta
         output: splunk-hec
         final: true
+  limits.yml: |
+    maxPQSize: "10GB"

@@ -56,7 +56,9 @@ spec:
                 mkdir -p ${CRIBL_VOLUME_DIR}/local/edge &&
                 rm -f ${CRIBL_VOLUME_DIR}/local/edge/inputs.yml &&
                 cp /var/tmp/cribl-config/outputs.yml
-                ${CRIBL_VOLUME_DIR}/local/edge/outputs.yml
+                ${CRIBL_VOLUME_DIR}/local/edge/outputs.yml &&
+                cp /var/tmp/cribl-config/limits.yml
+                ${CRIBL_VOLUME_DIR}/local/edge/limits.yml
             - name: CRIBL_BEFORE_START_CMD_2
               value: /bin/sh /var/tmp/cribl-config/install-packs.sh &
           volumeMounts:
