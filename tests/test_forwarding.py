@@ -9,6 +9,7 @@ These tests verify data flows correctly through the pipeline:
 
 import errno
 import json
+import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -267,7 +268,10 @@ class TestStreamToSplunkForwarding:
 # Fixture for Claude Code log pipeline tests
 # ---------------------------------------------------------------------------
 
-_CLAUDE_TEST_DIR = Path.home() / ".claude/projects/-test-claude-pipeline"
+# CLAUDE_HOME overrides $HOME for Claude log paths.
+# Use the macOS user home when running tests inside a Docker container (CI runner).
+_CLAUDE_HOME = Path(os.environ.get("CLAUDE_HOME", Path.home()))
+_CLAUDE_TEST_DIR = _CLAUDE_HOME / ".claude/projects/-test-claude-pipeline"
 
 
 @pytest.fixture

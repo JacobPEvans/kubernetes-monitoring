@@ -20,6 +20,7 @@ Five test classes:
 
 import errno
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -30,6 +31,10 @@ from pathlib import Path
 import pytest
 from conftest import kubectl, kubectl_exec_no_fail
 from helpers import query_splunk
+
+# CLAUDE_HOME overrides $HOME for Claude log paths.
+# Use the macOS user home when running tests inside a Docker container (CI runner).
+_CLAUDE_HOME = Path(os.environ.get("CLAUDE_HOME", Path.home()))
 
 # ---------------------------------------------------------------------------
 # Sourcetype constants
@@ -120,7 +125,7 @@ def sentinel_session():
     Simulates a Claude Code session file routed to claude:code:session.
     Yields (path, sentinel_id). Cleans up after the test.
     """
-    test_dir = Path.home() / ".claude" / "projects" / "-test-sourcetype"
+    test_dir = _CLAUDE_HOME / ".claude" / "projects" / "-test-sourcetype"
     test_dir.mkdir(parents=True, exist_ok=True)
     sentinel_id = f"SRCTYPE_SESSION_{uuid.uuid4().hex[:12]}"
     sentinel_file = test_dir / f"test-{sentinel_id}.jsonl"
@@ -152,7 +157,7 @@ def sentinel_subagent():
     claude:code:subagent. Yields (path, sentinel_id). Cleans up after the test.
     """
     run_id = uuid.uuid4().hex[:12]
-    subagent_dir = Path.home() / ".claude" / "projects" / "-test-sourcetype" / run_id / "subagents"
+    subagent_dir = _CLAUDE_HOME / ".claude" / "projects" / "-test-sourcetype" / run_id / "subagents"
     subagent_dir.mkdir(parents=True, exist_ok=True)
     sentinel_id = f"SRCTYPE_SUBAGENT_{uuid.uuid4().hex[:12]}"
     sentinel_file = subagent_dir / f"test-{sentinel_id}.jsonl"
@@ -195,7 +200,7 @@ def sentinel_logs():
     Simulates a Claude Code log file routed to claude:code:logs.
     Yields (path, sentinel_id). Cleans up after the test.
     """
-    logs_dir = Path.home() / ".claude" / "logs"
+    logs_dir = _CLAUDE_HOME / ".claude" / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     sentinel_id = f"SRCTYPE_LOGS_{uuid.uuid4().hex[:12]}"
     sentinel_file = logs_dir / f"test-{sentinel_id}.jsonl"
@@ -220,7 +225,7 @@ def sentinel_plans():
     Simulates a Claude Code plans file routed to claude:code:plans.
     Yields (path, sentinel_id). Cleans up after the test.
     """
-    plans_dir = Path.home() / ".claude" / "plans"
+    plans_dir = _CLAUDE_HOME / ".claude" / "plans"
     plans_dir.mkdir(parents=True, exist_ok=True)
     sentinel_id = f"SRCTYPE_PLANS_{uuid.uuid4().hex[:12]}"
     sentinel_file = plans_dir / f"test-{sentinel_id}.md"
@@ -240,7 +245,7 @@ def sentinel_tasks():
     Simulates a Claude Code tasks file routed to claude:code:tasks.
     Yields (path, sentinel_id). Cleans up after the test.
     """
-    tasks_dir = Path.home() / ".claude" / "tasks" / "-test-sourcetype"
+    tasks_dir = _CLAUDE_HOME / ".claude" / "tasks" / "-test-sourcetype"
     tasks_dir.mkdir(parents=True, exist_ok=True)
     sentinel_id = f"SRCTYPE_TASKS_{uuid.uuid4().hex[:12]}"
     sentinel_file = tasks_dir / f"test-{sentinel_id}.json"
@@ -270,7 +275,7 @@ def sentinel_teams():
     The filename is fixed as config.json to match real team config structure.
     Yields (path, sentinel_id). Cleans up after the test.
     """
-    teams_dir = Path.home() / ".claude" / "teams" / "-test-sourcetype"
+    teams_dir = _CLAUDE_HOME / ".claude" / "teams" / "-test-sourcetype"
     teams_dir.mkdir(parents=True, exist_ok=True)
     sentinel_id = f"SRCTYPE_TEAMS_{uuid.uuid4().hex[:12]}"
     sentinel_file = teams_dir / "config.json"
@@ -410,7 +415,8 @@ class TestSourcetypeSentinels:
         """JSON config.json files in ~/.claude/teams/<team>/ reach Splunk as claude:code:teams.
 
         Writes a sentinel config.json into ~/.claude/teams/-test-sourcetype/ and verifies
-        that it reaches Splunk index=claude with sourcetype=claude:code:teams within 90s.
+        that it reaches Splunk index=claude with sourcetype=claude:code:teams within 180s.
+        The teams FileMonitor has a longer poll interval, so this test uses a wider deadline.
         """
         _, sentinel_id = sentinel_teams
         mgmt_url, admin_password = splunk_client
@@ -418,9 +424,10 @@ class TestSourcetypeSentinels:
             mgmt_url,
             admin_password,
             f'index=claude sourcetype={SOURCETYPE_TEAMS} "{sentinel_id}"',
+            deadline_seconds=180,
         )
         assert results, (
-            f"Sentinel '{sentinel_id}' not found in Splunk with sourcetype={SOURCETYPE_TEAMS} within 90s. "
+            f"Sentinel '{sentinel_id}' not found in Splunk with sourcetype={SOURCETYPE_TEAMS} within 180s. "
             "Check that the Edge FileMonitor is configured to monitor ~/.claude/teams/ "
             "and that the Stream pipeline assigns sourcetype=claude:code:teams."
         )

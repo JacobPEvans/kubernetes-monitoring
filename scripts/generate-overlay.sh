@@ -6,7 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 OVERLAY_DIR="$REPO_ROOT/k8s/overlays/local"
 PATCHES_DIR="$OVERLAY_DIR/patches"
-HOME_DIR="$HOME"
+# DEPLOY_HOME_DIR overrides HOME for k8s hostPath volumes (used in CI containers).
+# The k8s node must be able to see this path (e.g., the macOS user home via OrbStack).
+HOME_DIR="${DEPLOY_HOME_DIR:-$HOME}"
 
 echo "Generating local overlay..."
 echo "  HOME: $HOME_DIR"

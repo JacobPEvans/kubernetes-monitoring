@@ -1,6 +1,7 @@
 name: E2E Tests
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [main]
     paths:
@@ -8,6 +9,7 @@ on:
       - 'scripts/**'
       - 'Makefile'
       - 'tests/**'
+      - '.github/workflows/e2e-tests.yml'
 
 permissions:
   contents: read
@@ -15,7 +17,7 @@ permissions:
 jobs:
   e2e:
     name: Deploy and run E2E tests
-    runs-on: [self-hosted, macOS]
+    runs-on: [self-hosted, Linux]
     steps:
       - uses: actions/checkout@v6
       - name: Install test dependencies

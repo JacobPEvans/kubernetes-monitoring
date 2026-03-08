@@ -12,8 +12,12 @@ import requests
 
 CONTEXT = os.environ.get("KUBE_CONTEXT", "orbstack")
 NAMESPACE = os.environ.get("KUBE_NAMESPACE", "monitoring")
-OTEL_GRPC_ENDPOINT = "localhost:30317"
-OTEL_HTTP_ENDPOINT = "http://localhost:30318"
+
+# K8S_NODEPORT_HOST overrides the host for NodePort services.
+# Use "host.internal" when running tests inside a Docker container (CI runner).
+K8S_HOST = os.environ.get("K8S_NODEPORT_HOST", "localhost")
+OTEL_GRPC_ENDPOINT = f"{K8S_HOST}:30317"
+OTEL_HTTP_ENDPOINT = f"http://{K8S_HOST}:30318"
 
 # Local port-forward ports — each test uses a unique port to avoid collisions.
 PF_OTEL_HEALTH = 13133
@@ -24,7 +28,7 @@ PF_STREAM_INPUTS_A5 = 19423
 PF_STREAM_OUTPUTS = 19424
 
 # MCP server NodePort — accessed directly from macOS (not via port-forward).
-MCP_NODEPORT_URL = "http://localhost:30030/mcp"
+MCP_NODEPORT_URL = f"http://{K8S_HOST}:30030/mcp"
 
 STATEFULSETS = [
     "otel-collector",

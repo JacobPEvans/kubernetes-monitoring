@@ -1,7 +1,8 @@
-.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-e2e test-smoke test-pipeline test-forwarding test-sourcetypes test-unit test-all test-setup full-power power-save power-status clean
+.PHONY: help validate validate-schemas generate-overlay deploy deploy-doppler status logs build-images run-claude run-gemini test test-e2e test-smoke test-pipeline test-forwarding test-sourcetypes test-unit test-all test-setup full-power power-save power-status clean runner-build runner-start runner-stop runner-status runner-logs
 
 CONTEXT ?= orbstack
 NAMESPACE := monitoring
+GITHUB_REPO ?= JacobPEvans/kubernetes-monitoring
 PYTEST_CHECK := test -x .venv/bin/pytest || { echo "Run 'make test-setup' first to install test dependencies"; exit 1; }
 UNIT_TEST_FILES := tests/test_unit.py tests/test_manifests.py tests/test_conftest_utils.py
 
@@ -21,7 +22,7 @@ deploy: ## Full deploy: generate overlay + create secrets + apply
 	./scripts/deploy.sh
 
 deploy-doppler: ## Deploy with Cribl secrets from Doppler (project/config in SOPS)
-	sops exec-env secrets.enc.yaml './scripts/deploy-doppler.sh'
+	@if [ -n "$$DOPPLER_TOKEN" ]; then ./scripts/deploy-doppler.sh; else sops exec-env secrets.enc.yaml './scripts/deploy-doppler.sh'; fi
 
 status: ## Show monitoring namespace status
 	kubectl --context $(CONTEXT) get all -n $(NAMESPACE)
@@ -96,3 +97,45 @@ power-status: ## Show monitoring pod replica counts and macOS power source
 
 clean: ## Delete monitoring namespace (destructive!)
 	kubectl --context $(CONTEXT) delete namespace $(NAMESPACE) --ignore-not-found
+
+runner-build: ## Build the self-hosted runner Docker image
+	docker build -t kubernetes-monitoring/actions-runner:latest docker/actions-runner/
+
+runner-start: runner-stop ## Start the self-hosted GitHub Actions runner
+	@scripts/runner-kubeconfig.sh > ~/.config/actions-runner-kubeconfig
+	@chmod 600 ~/.config/actions-runner-kubeconfig
+	@RUNNER_TOKEN=$$(gh api repos/$(GITHUB_REPO)/actions/runners/registration-token --method POST --jq '.token') && \
+	SOPS_ENV=$$(sops exec-env secrets.enc.yaml 'env | grep -E "^(DOPPLER_PROJECT|DOPPLER_CONFIG|DOPPLER_TOKEN|CRIBL_STREAM_PASSWORD|HEALTHCHECKS_)"') && \
+	ENV_FILE=$$(mktemp) && \
+	printf '%s\n' "$$SOPS_ENV" > "$$ENV_FILE" && \
+	chmod 600 "$$ENV_FILE" && \
+	docker run -d \
+	  --name actions-runner \
+	  --restart=always \
+	  -e GITHUB_REPOSITORY=$(GITHUB_REPO) \
+	  -e RUNNER_TOKEN="$$RUNNER_TOKEN" \
+	  -e RUNNER_NAME=orbstack-runner \
+	  -e RUNNER_LABELS="self-hosted,Linux" \
+	  -e DEPLOY_HOME_DIR=$(HOME) \
+	  -e K8S_NODEPORT_HOST=host.internal \
+	  -e CLAUDE_HOME=$(HOME) \
+	  --env-file "$$ENV_FILE" \
+	  -v $(HOME)/.config/actions-runner-kubeconfig:/home/runner/.kube/config:ro \
+	  -v $(HOME)/.claude/projects:$(HOME)/.claude/projects:rw \
+	  -v $(HOME)/.claude/logs:$(HOME)/.claude/logs:rw \
+	  -v $(HOME)/.claude/plans:$(HOME)/.claude/plans:rw \
+	  -v $(HOME)/.claude/tasks:$(HOME)/.claude/tasks:rw \
+	  -v $(HOME)/.claude/teams:$(HOME)/.claude/teams:rw \
+	  kubernetes-monitoring/actions-runner:latest && \
+	rm -f "$$ENV_FILE"
+
+runner-stop: ## Stop and remove the self-hosted runner
+	docker stop actions-runner 2>/dev/null || true
+	docker rm actions-runner 2>/dev/null || true
+
+runner-status: ## Show runner container and GitHub registration status
+	@docker ps --filter name=actions-runner --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || true
+	@gh api repos/$(GITHUB_REPO)/actions/runners --jq '.runners[] | {name, status, labels: [.labels[].name]}' 2>/dev/null || true
+
+runner-logs: ## Tail runner container logs
+	docker logs -f actions-runner
