@@ -37,9 +37,17 @@ if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-gemini-a
     || echo "WARNING: Gemini pack install failed"
 fi
 
-# Edge 4.16.x bug: FileMonitor ignores patterns not starting with '*'.
-# Patch session-*.json (star in middle) to *.json in the installed pack's inputs.
+# Edge 4.16.x bug: FileMonitor ignores filename patterns not starting with '*'.
+# Literal filenames (config.json, history.jsonl, etc.) and patterns with '*' in
+# the middle (session-*.json) are never discovered. Replace all affected patterns
+# with leading-wildcard equivalents so FileMonitor actually picks them up.
 PACK_DIR="${CRIBL_VOLUME_DIR}/default/cc-edge-claude-code"
-sed -i 's/"session-\*\.json"/"*.json"/' "${PACK_DIR}/inputs.yml" 2>/dev/null || true
+sed -i \
+  -e 's/"session-\*\.json"/"*.json"/' \
+  -e 's/"config\.json"/"*.json"/' \
+  -e 's/"history\.jsonl"/"*.jsonl"/' \
+  -e 's/"stats-cache\.json"/"*.json"/' \
+  -e 's/"installed_plugins\.json"/"*.json"/' \
+  "${PACK_DIR}/inputs.yml" 2>/dev/null || true
 
 echo "Pack installation complete"
