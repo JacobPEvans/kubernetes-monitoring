@@ -41,13 +41,14 @@ fi
 # Literal filenames (config.json, history.jsonl, etc.) and patterns with '*' in
 # the middle (session-*.json) are never discovered. Replace all affected patterns
 # with leading-wildcard equivalents so FileMonitor actually picks them up.
+# Match both quoted ("config.json") and bare YAML (- config.json) forms.
 PACK_DIR="${CRIBL_VOLUME_DIR}/default/cc-edge-claude-code"
 sed -i \
   -e 's/"session-\*\.json"/"*.json"/' \
-  -e 's/"config\.json"/"*.json"/' \
-  -e 's/"history\.jsonl"/"*.jsonl"/' \
-  -e 's/"stats-cache\.json"/"*.json"/' \
-  -e 's/"installed_plugins\.json"/"*.json"/' \
+  -e 's/- config\.json$/- "*.json"/' \
+  -e 's/- history\.jsonl$/- "*.jsonl"/' \
+  -e 's/- stats-cache\.json$/- "*.json"/' \
+  -e 's/- installed_plugins\.json$/- "*.json"/' \
   "${PACK_DIR}/inputs.yml" 2>/dev/null || true
 
 echo "Pack installation complete"
