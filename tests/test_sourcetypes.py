@@ -681,13 +681,13 @@ class TestGeminiSourcetypeSentinels:
 
         OrbStack's virtiofs has a brief propagation delay for newly created directory
         chains. Since ~/.gemini/antigravity/brain/ may not exist until the fixture
-        creates it, we allow up to 10s for the file to appear inside the pod.
+        creates it, we allow up to 30s for the file to appear inside the pod.
         """
         sentinel_path, sentinel_id = sentinel_antigravity_brain
         pod_path = f"/home/gemini/.gemini/antigravity/brain/{sentinel_path.name}"
         output = ""
         returncode = -1
-        for attempt in range(5):
+        for attempt in range(15):
             output, returncode = kubectl_exec_no_fail(
                 "statefulset/cribl-edge-standalone",
                 "--",
@@ -696,13 +696,28 @@ class TestGeminiSourcetypeSentinels:
             )
             if returncode == 0:
                 break
-            if attempt < 4:
+            if attempt < 14:
                 time.sleep(2)
-        assert returncode == 0, (
-            f"Sentinel file not readable inside edge pod at {pod_path} after 10s "
-            f"(exit {returncode}). OrbStack may not be propagating the hostPath mount, "
-            "or the gemini-config volume is not correctly mounted."
-        )
+        if returncode != 0:
+            # Collect diagnostics to pinpoint where the path breaks.
+            diag_parts = [
+                f"Sentinel file not readable inside edge pod at {pod_path} after 30s.",
+                f"Host sentinel path: {sentinel_path} (exists={sentinel_path.exists()})",
+            ]
+            for subpath in [
+                "/home/gemini/.gemini/",
+                "/home/gemini/.gemini/antigravity/",
+                "/home/gemini/.gemini/antigravity/brain/",
+            ]:
+                ls_out, ls_rc = kubectl_exec_no_fail(
+                    "statefulset/cribl-edge-standalone",
+                    "--",
+                    "ls",
+                    "-la",
+                    subpath,
+                )
+                diag_parts.append(f"ls {subpath} (rc={ls_rc}):\n{ls_out[:300]}")
+            pytest.fail("\n".join(diag_parts))
         assert sentinel_id in output, f"Sentinel ID {sentinel_id!r} not found in pod file content: {output!r}"
 
     def test_brain_file_monitor_active(self):
