@@ -677,19 +677,31 @@ class TestGeminiSourcetypeSentinels:
         )
 
     def test_brain_sentinel_visible_in_pod(self, sentinel_antigravity_brain):
-        """A sentinel *.md file written to host ~/.gemini/antigravity/brain/ is readable in the edge pod."""
+        """A sentinel *.md file written to host ~/.gemini/antigravity/brain/ is readable in the edge pod.
+
+        OrbStack's virtiofs has a brief propagation delay for newly created directory
+        chains. Since ~/.gemini/antigravity/brain/ may not exist until the fixture
+        creates it, we allow up to 10s for the file to appear inside the pod.
+        """
         sentinel_path, sentinel_id = sentinel_antigravity_brain
         pod_path = f"/home/gemini/.gemini/antigravity/brain/{sentinel_path.name}"
-        output, returncode = kubectl_exec_no_fail(
-            "statefulset/cribl-edge-standalone",
-            "--",
-            "cat",
-            pod_path,
-        )
+        output = ""
+        returncode = -1
+        for attempt in range(5):
+            output, returncode = kubectl_exec_no_fail(
+                "statefulset/cribl-edge-standalone",
+                "--",
+                "cat",
+                pod_path,
+            )
+            if returncode == 0:
+                break
+            if attempt < 4:
+                time.sleep(2)
         assert returncode == 0, (
-            f"Sentinel file not readable inside edge pod at {pod_path} (exit {returncode}). "
-            "Check that the gemini-config hostPath volume is correctly mounted and "
-            "the brain directory exists on the host."
+            f"Sentinel file not readable inside edge pod at {pod_path} after 10s "
+            f"(exit {returncode}). OrbStack may not be propagating the hostPath mount, "
+            "or the gemini-config volume is not correctly mounted."
         )
         assert sentinel_id in output, f"Sentinel ID {sentinel_id!r} not found in pod file content: {output!r}"
 
@@ -762,13 +774,14 @@ class TestGeminiSourcetypeSentinels:
         """*.md files in ~/.gemini/antigravity/brain/ reach Splunk as antigravity:brain.
 
         Writes a sentinel *.md into ~/.gemini/antigravity/brain/ and verifies that it reaches
-        Splunk index=gemini with sourcetype=antigravity:brain within 300s.
+        Splunk index=gemini with sourcetype=antigravity:brain within 90s.
 
-        Precondition gates (run earlier in this class) verify:
+        Precondition gates (run earlier in this class) already verified:
         - The gemini-config hostPath mount is accessible
         - The antigravity-brain input config exists with resolved paths
         - The sentinel file is visible inside the edge pod
         - The FileMonitor is actively scanning the brain path
+        So if this test fails, the issue is in Stream routing or Splunk indexing.
         """
         _, sentinel_id = sentinel_antigravity_brain
         mgmt_url, admin_password = splunk_client
@@ -776,10 +789,10 @@ class TestGeminiSourcetypeSentinels:
             mgmt_url,
             admin_password,
             f'index=gemini sourcetype={SOURCETYPE_ANTIGRAVITY_BRAIN} "{sentinel_id}"',
-            deadline_seconds=300,
+            deadline_seconds=90,
         )
         assert results, (
-            f"Sentinel '{sentinel_id}' not found in Splunk with sourcetype={SOURCETYPE_ANTIGRAVITY_BRAIN} within 300s. "
+            f"Sentinel '{sentinel_id}' not found in Splunk with sourcetype={SOURCETYPE_ANTIGRAVITY_BRAIN} within 90s. "
             "All precondition gates passed (mount accessible, config resolved, file visible in pod, "
             "FileMonitor active), so the issue is likely in the Stream pipeline routing or Splunk index. "
             "Check the Stream pipeline's sourcetype assignment and that index=gemini exists in Splunk."

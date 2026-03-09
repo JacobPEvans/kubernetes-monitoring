@@ -87,7 +87,8 @@
     "dearmor",
     "keyrings",
     "urlencode",
-    "poolsize"
+    "poolsize",
+    "virtiofs"
   ],
   "ignorePaths": [
     "packs/",
