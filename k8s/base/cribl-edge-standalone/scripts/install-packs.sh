@@ -77,8 +77,9 @@ sed -i \
 curl -sf -X POST "${API}/version/commit" -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"message":"Pack installation and FileMonitor patches"}' \
-  || true
+  || echo "WARNING: version/commit failed, worker may not have loaded config changes"
 curl -sf -X POST "${API}/system/settings/reload" \
-  -H "Authorization: Bearer ${TOKEN}" || true
+  -H "Authorization: Bearer ${TOKEN}" \
+  || echo "WARNING: settings reload failed, worker may not have loaded new packs"
 
 echo "Pack installation complete"
