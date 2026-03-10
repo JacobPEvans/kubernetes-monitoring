@@ -58,18 +58,7 @@ spec:
                 cp /var/tmp/cribl-config/outputs.yml
                 ${CRIBL_VOLUME_DIR}/local/edge/outputs.yml &&
                 cp /var/tmp/cribl-config/limits.yml
-                ${CRIBL_VOLUME_DIR}/local/edge/limits.yml;
-                sed -i 's|\$GEMINI_HOME|/home/gemini|g'
-                ${CRIBL_VOLUME_DIR}/default/cc-edge-gemini-antigravity/inputs.yml
-                2>/dev/null || true;
-                sed -i
-                -e 's/"session-\*\.json"/"*.json"/'
-                -e 's/- config\.json$/- "*.json"/'
-                -e 's/- history\.jsonl$/- "*.jsonl"/'
-                -e 's/- stats-cache\.json$/- "*.json"/'
-                -e 's/- installed_plugins\.json$/- "*.json"/'
-                ${CRIBL_VOLUME_DIR}/default/cc-edge-claude-code/inputs.yml
-                2>/dev/null || true
+                ${CRIBL_VOLUME_DIR}/local/edge/limits.yml
             - name: CRIBL_BEFORE_START_CMD_2
               value: /bin/sh /var/tmp/cribl-config/install-packs.sh &
           volumeMounts:

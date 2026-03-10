@@ -18,8 +18,8 @@ TOKEN=$(curl -sf -X POST "${API}/auth/login" \
   | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 [ -z "$TOKEN" ] && echo "WARNING: Auth failed, skipping pack install" && exit 0
 
-PACK_CLAUDE="https://github.com/JacobPEvans/cc-edge-claude-code-otel/releases/download/v2.0.0/cc-edge-claude-code-otel.crbl"
-PACK_GEMINI="https://github.com/JacobPEvans/cc-edge-gemini-antigravity-io/releases/download/v0.1.0/cc-edge-gemini-antigravity-io.crbl"
+PACK_CLAUDE="https://github.com/JacobPEvans/cc-edge-claude-code-otel/releases/download/v1.2.4/cc-edge-claude-code-otel.crbl"
+PACK_GEMINI="https://github.com/JacobPEvans/cc-edge-gemini-antigravity-io/releases/download/v1.1.1/cc-edge-gemini-antigravity-io.crbl"
 
 # Install each pack only if not already present (idempotent across pod restarts).
 # Each pack install triggers a Cribl worker reload. We must wait for the reload
@@ -45,38 +45,12 @@ if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-gemini-a
   sleep 10
 fi
 
-# Edge 4.16.x bug: FileMonitor ignores filename patterns not starting with '*'.
-# Literal filenames (config.json, history.jsonl, etc.) and patterns with '*' in
-# the middle (session-*.json) are never discovered. Replace all affected patterns
-# with leading-wildcard equivalents so FileMonitor actually picks them up.
-# Match both quoted ("config.json") and bare YAML (- config.json) forms.
-PACK_DIR="${CRIBL_VOLUME_DIR}/default/cc-edge-claude-code"
-sed -i \
-  -e 's/"session-\*\.json"/"*.json"/' \
-  -e 's/- config\.json$/- "*.json"/' \
-  -e 's/- history\.jsonl$/- "*.jsonl"/' \
-  -e 's/- stats-cache\.json$/- "*.json"/' \
-  -e 's/- installed_plugins\.json$/- "*.json"/' \
-  "${PACK_DIR}/inputs.yml" 2>/dev/null || true
-
-# Edge 4.16.x bug: $GEMINI_HOME env var doesn't resolve during early worker
-# startup after pod restart, causing FileMonitor to scan /.gemini (non-existent)
-# instead of /home/gemini/.gemini. Replace the variable reference with the
-# literal path so FileMonitor works immediately on cold start.
-GEMINI_PACK_DIR="${CRIBL_VOLUME_DIR}/default/cc-edge-gemini-antigravity"
-sed -i \
-  -e "s|\\\$GEMINI_HOME|${GEMINI_HOME}|g" \
-  "${GEMINI_PACK_DIR}/inputs.yml" 2>/dev/null || true
-
 # Force Cribl to commit all pending config changes and reload the worker.
-# This runs unconditionally because sed patches above always modify pack inputs
-# (even when packs are already installed), and the worker needs to reload to
-# pick up the resolved env var paths and filename pattern fixes.
 # Note: "effective" param requires a group and fails on Edge standalone,
 # so we use version/commit (without effective) + system/settings/reload.
 curl -sf -X POST "${API}/version/commit" -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
-  -d '{"message":"Pack installation and FileMonitor patches"}' \
+  -d '{"message":"Pack installation"}' \
   || echo "WARNING: version/commit failed, worker may not have loaded config changes"
 curl -sf -X POST "${API}/system/settings/reload" \
   -H "Authorization: Bearer ${TOKEN}" \
