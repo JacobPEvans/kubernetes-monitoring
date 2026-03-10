@@ -18,6 +18,20 @@ TOKEN=$(curl -sf -X POST "${API}/auth/login" \
   | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 [ -z "$TOKEN" ] && echo "WARNING: Auth failed, skipping pack install" && exit 0
 
+# wait_and_reauth: called after each pack install triggers a worker reload.
+# Health-check runs FIRST (API may be down during reload), then re-acquires
+# the JWT (reload invalidates sessions), then guards against empty token.
+wait_and_reauth() {
+  j=0; until curl -sf "${API}/health" >/dev/null 2>&1; do
+    j=$((j+1)); [ "$j" -gt 12 ] && break; sleep 5
+  done
+  TOKEN=$(curl -sf -X POST "${API}/auth/login" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"admin\",\"password\":\"${CRIBL_EDGE_PASSWORD:-admin}\"}" \
+    | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+  [ -z "$TOKEN" ] && echo "WARNING: Re-auth failed after reload, skipping remaining steps" && exit 0
+}
+
 PACK_CLAUDE="https://github.com/JacobPEvans/cc-edge-claude-code-otel/releases/download/v1.2.4/cc-edge-claude-code-otel.crbl"
 PACK_GEMINI="https://github.com/JacobPEvans/cc-edge-gemini-antigravity-io/releases/download/v1.1.1/cc-edge-gemini-antigravity-io.crbl"
 
@@ -34,15 +48,7 @@ if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-claude-c
     || echo "WARNING: Claude pack install failed"
   # Wait for Cribl worker to finish reloading after Claude pack install.
   sleep 10
-  # Re-acquire auth token — worker reload may invalidate the JWT session.
-  TOKEN=$(curl -sf -X POST "${API}/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"admin\",\"password\":\"${CRIBL_EDGE_PASSWORD:-admin}\"}" \
-    | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
-  # Wait for the API to be back up before proceeding.
-  j=0; until curl -sf "${API}/health" >/dev/null 2>&1; do
-    j=$((j+1)); [ "$j" -gt 12 ] && break; sleep 5
-  done
+  wait_and_reauth
 fi
 
 # Cribl auto-disables gemini-cli-otel (port 4317 conflict with claude-code-otel).
@@ -54,15 +60,7 @@ if ! curl -sf -H "Authorization: Bearer ${TOKEN}" "${API}/packs/cc-edge-gemini-a
     || echo "WARNING: Gemini pack install failed"
   # Wait for Cribl worker to finish reloading after Gemini pack install.
   sleep 10
-  # Re-acquire auth token — worker reload may invalidate the JWT session.
-  TOKEN=$(curl -sf -X POST "${API}/auth/login" \
-    -H "Content-Type: application/json" \
-    -d "{\"username\":\"admin\",\"password\":\"${CRIBL_EDGE_PASSWORD:-admin}\"}" \
-    | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
-  # Wait for the API to be back up before proceeding.
-  j=0; until curl -sf "${API}/health" >/dev/null 2>&1; do
-    j=$((j+1)); [ "$j" -gt 12 ] && break; sleep 5
-  done
+  wait_and_reauth
 fi
 
 # Force Cribl to commit all pending config changes and reload the worker.
