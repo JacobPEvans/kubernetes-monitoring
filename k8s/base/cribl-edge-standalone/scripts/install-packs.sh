@@ -32,8 +32,8 @@ wait_and_reauth() {
   [ -z "$TOKEN" ] && echo "WARNING: Re-auth failed after reload, skipping remaining steps" && exit 0
 }
 
-PACK_CLAUDE="https://github.com/JacobPEvans/cc-edge-claude-code-otel/releases/download/v1.2.4/cc-edge-claude-code-otel.crbl"
-PACK_GEMINI="https://github.com/JacobPEvans/cc-edge-gemini-antigravity-io/releases/download/v1.1.1/cc-edge-gemini-antigravity-io.crbl"
+PACK_CLAUDE="https://github.com/JacobPEvans/cc-edge-claude-code-otel/releases/download/v1.2.6/cc-edge-claude-code-otel.crbl"
+PACK_GEMINI="https://github.com/JacobPEvans/cc-edge-gemini-antigravity-io/releases/download/v0.2.2/cc-edge-gemini-antigravity-io.crbl"
 
 # Install each pack only if not already present (idempotent across pod restarts).
 # Each pack install triggers a Cribl worker reload. We must wait for the reload
