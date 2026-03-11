@@ -3,12 +3,13 @@ kind: LimitRange
 metadata:
   name: cribl-cpu-defaults
   namespace: monitoring
+  labels:
+    app.kubernetes.io/component: cribl-defaults
   annotations:
     # CPU defaults for all Cribl containers in this namespace.
     # Containers that do NOT specify cpu in their resources block inherit these values.
     # Non-Cribl containers (otel-collector, heartbeats, etc.) set their own explicit
     # cpu values and are therefore unaffected by these defaults.
-    app.kubernetes.io/component: cribl-defaults
 spec:
   limits:
     - type: Container
