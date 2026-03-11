@@ -6,6 +6,7 @@ namespace: monitoring
 resources:
   - namespace.yaml
   - priority-classes.yaml
+  - limitrange.yaml
   # OTEL Collector
   - otel-collector/
   # Cribl Edge (managed by Cribl Cloud)

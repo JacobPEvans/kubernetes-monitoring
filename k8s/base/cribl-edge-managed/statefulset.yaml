@@ -65,11 +65,9 @@ spec:
           resources:
             requests:
               memory: "512Mi"
-              cpu: "250m"
               ephemeral-storage: "1Gi"
             limits:
               memory: "1Gi"
-              cpu: "1"
               ephemeral-storage: "20Gi"
           startupProbe:
             exec:

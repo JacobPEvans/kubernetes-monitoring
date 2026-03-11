@@ -20,6 +20,7 @@
     "kubens",
     "kustomization",
     "kustomize",
+    "limitrange",
     "lastmodified",
     "ollama",
     "opentelemetry",
