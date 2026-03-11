@@ -1,3 +1,4 @@
+---
 name: E2E Tests
 
 on:
@@ -34,5 +35,23 @@ jobs:
           mask-pod-ips: 'true'
           kubernetes-namespace: monitoring
           kubernetes-context: orbstack
+      - name: Wait for pipeline stabilization
+        run: |
+          echo "Waiting for OTEL pipeline to stabilize after deploy..."
+          # Send a throwaway trace to prime the gRPC connection
+          python3 scripts/otel-warmup.py || true
+          # Wait for collector to successfully export (confirms gRPC connection is live)
+          # "TracesExporter" is the debug exporter log line at normal verbosity confirming a batch was sent
+          for i in $(seq 1 12); do
+            if kubectl --context orbstack -n monitoring logs statefulset/otel-collector --since=2m 2>/dev/null | grep -q 'TracesExporter'; then
+              echo "Pipeline stabilized after $((i * 5))s"
+              break
+            fi
+            if [ "$i" -eq 12 ]; then
+              echo "WARNING: Pipeline not confirmed stable after 60s, proceeding anyway"
+              break
+            fi
+            sleep 5
+          done
       - name: Run E2E test suite
         run: make test-e2e

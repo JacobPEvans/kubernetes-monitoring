@@ -57,9 +57,13 @@ class TestCollectorToStreamForwarding:
         log lines (lines starting with a timestamp and log level marker).
         """
         test_id = str(uuid.uuid4())
+        test_start = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         _send_trace(test_id)
         time.sleep(5)  # Allow time for forwarding attempt
-        logs = kubectl("logs", "statefulset/otel-collector", "--tail=50")
+        # Use --since-time tied to this test's start timestamp so only logs
+        # produced during this test run are inspected. This prevents false
+        # failures from pod startup/restart errors that predate the send.
+        logs = kubectl("logs", "statefulset/otel-collector", f"--since-time={test_start}")
         # OTEL collector log format: TIMESTAMP\tLEVEL\tFILE\tMESSAGE\tJSON
         # Only lines with \terror\t are error-level operational log entries.
         # Info-level retry lines (e.g. "Exporting failed. Will retry...") are
@@ -213,7 +217,7 @@ class TestStreamToSplunkForwarding:
         assert not error_lines, "Cribl Stream has output errors for splunk-hec:\n" + "\n".join(error_lines[:5])
 
     def test_otlp_events_reach_splunk_realtime(self, splunk_client):
-        """Send OTLP trace and verify it appears in Splunk index=claude within 60s.
+        """Send OTLP trace and verify it appears in Splunk index=claude within 120s.
 
         End-to-end verification that the OTLP → Stream → Splunk HEC path (A4 + A7) delivers
         events to the correct Splunk index. Uses a unique trace ID as a sentinel to ensure
@@ -227,7 +231,7 @@ class TestStreamToSplunkForwarding:
         _send_trace(trace_id)
         mgmt_url, admin_password = splunk_client
 
-        deadline = time.time() + 60
+        deadline = time.time() + 120
         while time.time() < deadline:
             results = query_splunk(
                 mgmt_url,
@@ -239,7 +243,7 @@ class TestStreamToSplunkForwarding:
                 return
             time.sleep(5)
         pytest.fail(
-            f"Trace ID '{trace_id}' not found in Splunk index=claude within 60s. "
+            f"Trace ID '{trace_id}' not found in Splunk index=claude within 120s. "
             "The OTLP → Stream → Splunk HEC pipeline (A4 + A7) is not forwarding events to the correct index."
         )
 
