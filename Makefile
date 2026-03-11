@@ -66,7 +66,7 @@ test-unit: ## Run unit tests (no cluster required)
 
 test-e2e: ## Run full test suite in order (smoke → pipeline → forwarding → sourcetypes)
 	@$(PYTEST_CHECK)
-	.venv/bin/pytest tests/test_smoke.py tests/test_pipeline.py tests/test_forwarding.py tests/test_sourcetypes.py -v --tb=short
+	.venv/bin/pytest tests/test_smoke.py tests/test_pipeline.py tests/test_forwarding.py tests/test_sourcetypes.py -v --tb=short -x
 
 test-all: ## Run all tests in order: unit → smoke → pipeline → forwarding → sourcetypes
 	@$(PYTEST_CHECK)
