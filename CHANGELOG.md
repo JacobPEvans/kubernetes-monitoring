@@ -2,11 +2,9 @@
 
 ## [1.2.0](https://github.com/JacobPEvans/kubernetes-monitoring/compare/v1.1.0...v1.2.0) (2026-03-12)
 
-
 ### Features
 
 * CPU defaults via namespace LimitRange ([#90](https://github.com/JacobPEvans/kubernetes-monitoring/issues/90)) ([cb98230](https://github.com/JacobPEvans/kubernetes-monitoring/commit/cb982300621b131dc8383c1d5b08ce4fb5be3384))
-
 
 ### Bug Fixes
 
