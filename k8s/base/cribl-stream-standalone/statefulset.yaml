@@ -104,11 +104,9 @@ spec:
           resources:
             requests:
               memory: "1Gi"
-              cpu: "500m"
               ephemeral-storage: "1Gi"
             limits:
               memory: "4Gi"
-              cpu: "2"
               ephemeral-storage: "25Gi"
           startupProbe:
             exec:
@@ -118,7 +116,9 @@ spec:
                 - "curl -sf http://127.0.0.1:9000/api/v1/health || exit 1"
             initialDelaySeconds: 10
             periodSeconds: 10
-            failureThreshold: 60
+            # 120 failures × 10s period = 1200s budget, covering the cold-start copy of
+            # ~575MB from /opt/cribl to the hostPath volume over virtiofs (~10-15 min on OrbStack).
+            failureThreshold: 120
             timeoutSeconds: 10
           livenessProbe:
             exec:
