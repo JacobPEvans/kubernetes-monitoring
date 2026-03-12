@@ -19,7 +19,7 @@ data:
         onBackpressure: block
         pqEnabled: true
         pqMaxSize: "5GB"
-        pqPath: /opt/cribl/data/pq
+        pqPath: /opt/cribl-data/pq
       default:
         type: default
         defaultId: splunk-hec
