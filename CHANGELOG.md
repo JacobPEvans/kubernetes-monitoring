@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/JacobPEvans/kubernetes-monitoring/compare/v1.1.0...v1.2.0) (2026-03-12)
+
+
+### Features
+
+* CPU defaults via namespace LimitRange ([#90](https://github.com/JacobPEvans/kubernetes-monitoring/issues/90)) ([cb98230](https://github.com/JacobPEvans/kubernetes-monitoring/commit/cb982300621b131dc8383c1d5b08ce4fb5be3384))
+
+
+### Bug Fixes
+
+* move CRIBL_VOLUME_DIR outside CRIBL_HOME to prevent recursive copy ([#94](https://github.com/JacobPEvans/kubernetes-monitoring/issues/94)) ([453d72b](https://github.com/JacobPEvans/kubernetes-monitoring/commit/453d72b102d5aedca6550c9a1117175afa4992e2))
+
 ## [1.1.0](https://github.com/JacobPEvans/kubernetes-monitoring/compare/v1.0.0...v1.1.0) (2026-03-11)
 
 ### Features

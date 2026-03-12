@@ -11,6 +11,8 @@ on:
       - 'Makefile'
       - 'tests/**'
       - '.github/workflows/e2e-tests.yml'
+      - 'CHANGELOG.md'
+      - '.release-please-manifest.json'
 
 permissions:
   contents: read
@@ -18,6 +20,11 @@ permissions:
 jobs:
   e2e:
     name: Deploy and run E2E tests
+    # Skip for release-please branches — no infra changes, just version bumps.
+    # "skipped" counts as passing for required status checks in GitHub rulesets.
+    # Note: github.head_ref is used in a boolean if-condition (not interpolated into
+    # a run: step), so command injection is not possible here.
+    if: "!startsWith(github.head_ref, 'release-please')"
     runs-on: [self-hosted, Linux]
     steps:
       - uses: actions/checkout@v6
